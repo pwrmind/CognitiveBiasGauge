@@ -9,7 +9,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,62 +18,83 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     
     <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .compact-card {
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+        .compact-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
         .thought-input {
-            min-height: 120px;
+            min-height: 100px;
             resize: vertical;
         }
-        .loading-bar {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        .compact-button {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            border-radius: 6px;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
+        .compact-badge {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            border-radius: 12px;
+        }
+        .dense-list-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .dense-list-item:last-child {
+            border-bottom: none;
+        }
+        .compact-header {
+            padding: 0.75rem 0;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+        .compact-footer {
+            padding: 1.5rem 0;
+            font-size: 0.875rem;
+        }
+        .progress-bar {
+            height: 4px;
+            border-radius: 2px;
+        }
+        .loading-dots:after {
+            content: ' .';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ' .'; }
+            40% { content: ' ..'; }
+            60% { content: ' ...'; }
+            80%, 100% { content: ''; }
         }
         [x-cloak] { display: none !important; }
-        
-        /* Стили для скроллбара */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
     </style>
 </head>
-<body class="bg-gray-50 font-sans min-h-screen">
+<body class="bg-gray-50 font-sans text-gray-800 text-sm min-h-screen">
     <!-- Alpine.js Component Container -->
-    <div x-data="cognitiveBiasApp" x-init="init()" class="min-h-screen">
-        <!-- Header -->
-        <header class="gradient-bg text-white shadow-lg">
-            <div class="container mx-auto px-4 py-6">
-                <div class="flex flex-col md:flex-row justify-between items-center">
-                    <div class="mb-4 md:mb-0">
-                        <h1 class="text-3xl font-bold">
-                            <i class="fas fa-brain mr-3"></i>CognitiveBiasGauge
+    <div x-data="cognitiveBiasApp" x-init="init()" class="min-h-screen flex flex-col">
+        <!-- Compact Header -->
+        <header class="compact-header text-white shadow-sm">
+            <div class="container mx-auto px-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-xl font-bold">
+                            <i class="fas fa-brain mr-2"></i>CognitiveBiasGauge
                         </h1>
-                        <p class="text-primary-100 mt-2">Анализатор когнитивных искажений на основе AI</p>
+                        <p class="text-primary-100 text-xs opacity-80 mt-0.5">AI анализатор когнитивных искажений</p>
                     </div>
-                    <div class="flex space-x-4">
+                    <div class="flex space-x-2">
                         <button @click="activeTab = 'analyze'" 
-                                :class="activeTab === 'analyze' ? 'bg-white text-blue-700' : 'bg-blue-700 text-white'"
-                                class="px-4 py-2 rounded-lg font-semibold transition">
-                            <i class="fas fa-search mr-2"></i>Анализ
+                                :class="activeTab === 'analyze' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white'"
+                                class="compact-button font-medium transition-colors">
+                            <i class="fas fa-search mr-1.5"></i>Анализ
                         </button>
                         <button @click="activeTab = 'history'"
-                                :class="activeTab === 'history' ? 'bg-white text-blue-700' : 'bg-blue-700 text-white'"
-                                class="px-4 py-2 rounded-lg font-semibold transition">
-                            <i class="fas fa-history mr-2"></i>История
+                                :class="activeTab === 'history' ? 'bg-white text-indigo-600' : 'bg-indigo-700 text-white'"
+                                class="compact-button font-medium transition-colors">
+                            <i class="fas fa-history mr-1.5"></i>История
                         </button>
                     </div>
                 </div>
@@ -81,110 +102,111 @@
         </header>
 
         <!-- Main Content -->
-        <main class="container mx-auto px-4 py-8">
+        <main class="flex-1 container mx-auto px-4 py-4">
             <!-- Analysis Section -->
-            <div x-show="activeTab === 'analyze'" x-cloak class="space-y-8">
+            <div x-show="activeTab === 'analyze'" x-cloak class="space-y-4">
                 <!-- Model Loading Status -->
-                <div x-show="isLoadingModel" class="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
-                    <div class="loading-bar mb-4">
-                        <i class="fas fa-cog fa-spin text-4xl text-blue-600"></i>
-                    </div>
-                    <h3 class="text-xl font-semibold text-blue-800 mb-2">Загрузка AI-модели</h3>
-                    <p class="text-blue-600" x-text="loadingProgress"></p>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
-                        <div class="bg-blue-600 h-2.5 rounded-full" :style="`width: ${modelLoadProgress}%`"></div>
+                <div x-show="isLoadingModel" class="bg-blue-50 border border-blue-200 compact-card p-4 text-center">
+                    <div class="flex items-center justify-center space-x-3">
+                        <i class="fas fa-spinner fa-spin text-blue-600"></i>
+                        <div class="text-left">
+                            <p class="text-blue-800 font-medium" x-text="loadingProgress"></p>
+                            <div class="w-48 bg-gray-200 rounded-full progress-bar mt-1">
+                                <div class="bg-blue-600 h-full rounded-full" :style="`width: ${modelLoadProgress}%`"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Thought Input -->
-                <div x-show="!isLoadingModel" class="bg-white rounded-2xl shadow-xl p-6">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">
-                        <i class="fas fa-edit mr-3 text-blue-500"></i>Введите вашу мысль
+                <div x-show="!isLoadingModel" class="bg-white compact-card shadow-sm p-4">
+                    <h2 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-edit mr-2 text-indigo-500"></i>Введите вашу мысль
                     </h2>
                     <textarea 
                         x-model="userThought"
-                        placeholder="Опишите мысль или ситуацию, которую хотите проанализировать. Например: 'Если я не сдам проект идеально, меня уволят'..."
-                        class="w-full thought-input p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                        placeholder="Опишите мысль или ситуацию для анализа. Пример: 'Если я не сдам проект идеально, меня уволят'..."
+                        class="w-full thought-input p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition text-sm"
                         :disabled="isAnalyzing"></textarea>
                     
-                    <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-4 sm:space-y-0">
-                        <div class="text-sm text-gray-500">
+                    <div class="flex justify-between items-center mt-3">
+                        <div class="text-xs text-gray-500">
                             <span x-text="userThought.length"></span> символов
                         </div>
-                        <div class="space-x-4">
+                        <div class="flex space-x-2">
                             <button @click="userThought = ''" 
-                                    class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                                <i class="fas fa-eraser mr-2"></i>Очистить
+                                    class="compact-button border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-eraser mr-1.5"></i>Очистить
                             </button>
                             <button @click="analyzeThought()"
                                     :disabled="!userThought.trim() || isAnalyzing"
-                                    :class="!userThought.trim() || isAnalyzing ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
-                                    class="px-5 py-2.5 text-white font-semibold rounded-lg transition">
-                                <i class="fas fa-play mr-2"></i>
-                                <span x-text="isAnalyzing ? 'Анализ...' : 'Проанализировать'"></span>
+                                    :class="!userThought.trim() || isAnalyzing ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'"
+                                    class="compact-button text-white font-medium transition-colors">
+                                <i class="fas fa-play mr-1.5"></i>
+                                <span x-text="isAnalyzing ? 'Анализ...' : 'Анализировать'"></span>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Analysis Results -->
-                <div x-show="results && results.length > 0 && !isAnalyzing" class="bg-white rounded-2xl shadow-xl p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-gray-800">
-                            <i class="fas fa-chart-bar mr-3 text-green-500"></i>Результаты анализа
+                <div x-show="results && results.length > 0 && !isAnalyzing" class="bg-white compact-card shadow-sm p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-semibold text-gray-800">
+                            <i class="fas fa-chart-bar mr-2 text-green-500"></i>Результаты анализа
                         </h2>
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center">
-                                <span class="text-sm text-gray-600 mr-2">Порог уверенности:</span>
+                        <div class="flex items-center space-x-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-gray-600">Порог:</span>
                                 <input type="range" x-model="confidenceThreshold" min="0.1" max="0.9" step="0.05"
-                                       class="w-32" @change="filterResults()">
-                                <span class="ml-2 font-mono" x-text="(confidenceThreshold * 100).toFixed(0) + '%'"></span>
+                                       class="w-24" @change="filterResults()">
+                                <span class="text-xs font-mono w-10" x-text="(confidenceThreshold * 100).toFixed(0) + '%'"></span>
                             </div>
-                            <button @click="saveToHistory()" class="text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-save text-lg"></i>
+                            <button @click="saveToHistory()" class="text-indigo-600 hover:text-indigo-800" title="Сохранить">
+                                <i class="fas fa-save"></i>
                             </button>
                         </div>
                     </div>
 
                     <!-- Summary Statistics -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        <div class="bg-blue-50 p-4 rounded-xl">
-                            <div class="text-blue-800 font-bold text-2xl" x-text="results.length"></div>
-                            <div class="text-blue-600">Обнаружено искажений</div>
+                    <div class="grid grid-cols-3 gap-2 mb-4">
+                        <div class="bg-indigo-50 p-2 rounded-lg text-center">
+                            <div class="text-indigo-700 font-bold" x-text="results.length"></div>
+                            <div class="text-indigo-600 text-xs">Искажений</div>
                         </div>
-                        <div class="bg-green-50 p-4 rounded-xl">
-                            <div class="text-green-800 font-bold text-2xl" 
+                        <div class="bg-green-50 p-2 rounded-lg text-center">
+                            <div class="text-green-700 font-bold" 
                                  x-text="(results.reduce((max, r) => Math.max(max, r.score), 0) * 100).toFixed(1) + '%'"></div>
-                            <div class="text-green-600">Максимальная уверенность</div>
+                            <div class="text-green-600 text-xs">Макс. уверенность</div>
                         </div>
-                        <div class="bg-purple-50 p-4 rounded-xl">
-                            <div class="text-purple-800 font-bold text-2xl" 
+                        <div class="bg-purple-50 p-2 rounded-lg text-center">
+                            <div class="text-purple-700 font-bold" 
                                  x-text="new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})"></div>
-                            <div class="text-purple-600">Время анализа</div>
+                            <div class="text-purple-600 text-xs">Время</div>
                         </div>
                     </div>
 
                     <!-- Distortions List -->
-                    <div class="space-y-4">
+                    <div class="space-y-2">
                         <template x-for="(result, index) in results" :key="result.id">
-                            <div class="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition">
-                                <div class="flex justify-between items-center p-4 bg-gray-50">
-                                    <div>
-                                        <h3 class="font-bold text-lg text-gray-800" x-text="result.name"></h3>
-                                        <p class="text-gray-600 text-sm mt-1" x-text="result.description"></p>
+                            <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors">
+                                <div class="flex justify-between items-start p-3 bg-gray-50">
+                                    <div class="flex-1">
+                                        <h3 class="font-medium text-gray-800" x-text="result.name"></h3>
+                                        <p class="text-gray-600 text-xs mt-0.5" x-text="result.description"></p>
                                     </div>
-                                    <div class="text-right">
-                                        <div class="text-2xl font-bold text-blue-700" 
+                                    <div class="text-right ml-2">
+                                        <div class="text-lg font-bold text-indigo-700" 
                                              x-text="(result.score * 100).toFixed(1) + '%'"></div>
                                         <div class="text-xs text-gray-500">уверенность</div>
                                     </div>
                                 </div>
-                                <div class="p-4">
-                                    <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
-                                        <div class="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full" 
+                                <div class="p-3 pt-2">
+                                    <div class="w-full bg-gray-200 rounded-full progress-bar mb-2">
+                                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full" 
                                              :style="`width: ${result.score * 100}%`"></div>
                                     </div>
-                                    <div class="text-sm text-gray-700" x-text="getExplanation(result.score)"></div>
+                                    <div class="text-xs text-gray-700" x-text="getExplanation(result.score)"></div>
                                 </div>
                             </div>
                         </template>
@@ -193,90 +215,86 @@
             </div>
 
             <!-- History Section -->
-            <div x-show="activeTab === 'history'" x-cloak class="bg-white rounded-2xl shadow-xl p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">
-                    <i class="fas fa-history mr-3 text-blue-500"></i>История анализов
+            <div x-show="activeTab === 'history'" x-cloak class="bg-white compact-card shadow-sm p-4">
+                <h2 class="font-semibold text-gray-800 mb-3">
+                    <i class="fas fa-history mr-2 text-indigo-500"></i>История анализов
                 </h2>
                 
-                <div x-show="!history || history.length === 0" class="text-center py-12">
-                    <i class="fas fa-clock text-5xl text-gray-300 mb-4"></i>
-                    <p class="text-gray-500 text-lg">История анализов пуста</p>
+                <div x-show="!history || history.length === 0" class="text-center py-6">
+                    <i class="fas fa-clock text-3xl text-gray-300 mb-2"></i>
+                    <p class="text-gray-500 text-sm">История анализов пуста</p>
                 </div>
 
-                <div x-show="history && history.length > 0" class="space-y-4">
+                <div x-show="history && history.length > 0" class="space-y-2">
                     <template x-for="(item, index) in history.slice().reverse()" :key="item.id">
-                        <div class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition">
+                        <div class="dense-list-item hover:bg-gray-50 transition-colors">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
-                                    <p class="text-gray-800 mb-2" x-text="item.thought.substring(0, 150) + (item.thought.length > 150 ? '...' : '')"></p>
-                                    <div class="flex items-center text-sm text-gray-500">
+                                    <p class="text-gray-800 text-sm mb-1" x-text="item.thought.substring(0, 120) + (item.thought.length > 120 ? '...' : '')"></p>
+                                    <div class="flex items-center text-xs text-gray-500">
                                         <i class="far fa-clock mr-1"></i>
-                                        <span x-text="new Date(item.timestamp).toLocaleString()"></span>
-                                        <span class="mx-2">•</span>
+                                        <span x-text="new Date(item.timestamp).toLocaleDateString() + ' ' + new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})"></span>
+                                        <span class="mx-1">•</span>
                                         <span x-text="item.results.length + ' искажений'"></span>
                                     </div>
                                 </div>
-                                <button @click="loadFromHistory(item)" class="text-blue-600 hover:text-blue-800 ml-4">
-                                    <i class="fas fa-redo"></i>
+                                <button @click="loadFromHistory(item)" class="text-indigo-600 hover:text-indigo-800 ml-2" title="Загрузить">
+                                    <i class="fas fa-redo text-sm"></i>
                                 </button>
                             </div>
-                            <div class="flex flex-wrap gap-2 mt-3">
-                                <template x-for="result in item.results.slice(0, 3)" :key="result.id">
-                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            <div class="flex flex-wrap gap-1.5 mt-2">
+                                <template x-for="result in item.results.slice(0, 4)" :key="result.id">
+                                    <span class="compact-badge bg-indigo-100 text-indigo-800"
                                           x-text="result.name + ' (' + (result.score * 100).toFixed(0) + '%)'"></span>
                                 </template>
-                                <span x-show="item.results.length > 3" class="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                    +ещё <span x-text="item.results.length - 3"></span>
+                                <span x-show="item.results.length > 4" class="compact-badge bg-gray-100 text-gray-600">
+                                    +<span x-text="item.results.length - 4"></span>
                                 </span>
                             </div>
                         </div>
                     </template>
                 </div>
                 
-                <div x-show="history && history.length > 0" class="mt-6 flex justify-between items-center">
-                    <button @click="clearHistory()" class="px-4 py-2 text-red-600 hover:text-red-800">
-                        <i class="fas fa-trash mr-2"></i>Очистить историю
+                <div x-show="history && history.length > 0" class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
+                    <button @click="clearHistory()" class="text-red-600 hover:text-red-800 text-sm">
+                        <i class="fas fa-trash mr-1.5"></i>Очистить историю
                     </button>
-                    <button @click="exportHistory()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        <i class="fas fa-download mr-2"></i>Экспорт истории
+                    <button @click="exportHistory()" class="compact-button bg-indigo-600 text-white hover:bg-indigo-700">
+                        <i class="fas fa-download mr-1.5"></i>Экспорт
                     </button>
                 </div>
             </div>
         </main>
 
-        <!-- Footer -->
-        <footer class="mt-12 border-t border-gray-200">
-            <div class="container mx-auto px-4 py-8">
+        <!-- Compact Footer -->
+        <footer class="compact-footer border-t border-gray-200 bg-white">
+            <div class="container mx-auto px-4">
                 <div class="flex flex-col md:flex-row justify-between items-center">
-                    <div class="mb-4 md:mb-0">
+                    <div class="mb-3 md:mb-0">
                         <div class="flex items-center">
-                            <i class="fas fa-brain text-2xl text-blue-600 mr-3"></i>
-                            <span class="text-xl font-bold text-gray-800">CognitiveBiasGauge</span>
+                            <i class="fas fa-brain text-lg text-indigo-600 mr-2"></i>
+                            <span class="font-medium text-gray-800">CognitiveBiasGauge</span>
                         </div>
-                        <p class="text-gray-600 text-sm mt-2">AI-powered cognitive bias analyzer</p>
+                        <p class="text-gray-600 text-xs mt-0.5">
+                            <span x-text="modelStatus"></span>
+                            <span x-show="backendInfo" class="ml-1.5" x-text="'• ' + backendInfo"></span>
+                        </p>
                     </div>
                     
-                    <div class="text-center md:text-right">
-                        <div class="text-sm text-gray-500 mb-2">
-                            <span x-text="modelStatus"></span>
-                            <span x-show="backendInfo" class="ml-2" x-text="'• ' + backendInfo"></span>
+                    <!-- Performance Monitoring -->
+                    <div class="text-xs text-gray-500">
+                        <div class="flex space-x-4">
+                            <div>
+                                <i class="fas fa-microchip mr-1"></i>
+                                <span x-text="'Анализов: ' + (performanceStats ? performanceStats.totalAnalyses : 0)"></span>
+                            </div>
+                            <div x-show="performanceStats && performanceStats.lastAnalysisTime > 0">
+                                <i class="fas fa-stopwatch mr-1"></i>
+                                <span x-text="'Время: ' + performanceStats.lastAnalysisTime.toFixed(0) + 'ms'"></span>
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-400">
-                            © 2024 • Все вычисления выполняются локально в браузере
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Performance Monitoring -->
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                    <div class="text-xs text-gray-500 flex flex-wrap justify-center gap-4">
-                        <div>
-                            <i class="fas fa-microchip mr-1"></i>
-                            <span x-text="'Анализов: ' + (performanceStats ? performanceStats.totalAnalyses : 0)"></span>
-                        </div>
-                        <div x-show="performanceStats && performanceStats.lastAnalysisTime > 0">
-                            <i class="fas fa-stopwatch mr-1"></i>
-                            <span x-text="'Последний анализ: ' + performanceStats.lastAnalysisTime.toFixed(0) + 'ms'"></span>
+                        <div class="text-gray-400 mt-1 text-center md:text-right">
+                            © 2024 • Все вычисления выполняются локально
                         </div>
                     </div>
                 </div>
@@ -641,11 +659,11 @@
                 // Generate explanation based on score
                 getExplanation(score) {
                     if (score >= 0.7) {
-                        return "Высокая вероятность данного искажения. Рекомендуется критически переосмыслить мысль.";
+                        return "Высокая вероятность. Рекомендуется критически переосмыслить мысль.";
                     } else if (score >= 0.5) {
-                        return "Средняя вероятность. Обратите внимание на возможное влияние этого искажения.";
+                        return "Средняя вероятность. Обратите внимание на возможное влияние.";
                     } else {
-                        return "Низкая вероятность, но возможно наличие элементов данного искажения.";
+                        return "Низкая вероятность, но возможны элементы искажения.";
                     }
                 },
                 
