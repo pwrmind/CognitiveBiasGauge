@@ -14,29 +14,8 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Tailwind CSS Production Build -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'sans': ['Inter', 'system-ui', 'sans-serif'],
-                        'mono': ['JetBrains Mono', 'monospace']
-                    },
-                    colors: {
-                        'primary': {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Tailwind CSS через CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     
     <style>
         .gradient-bg {
@@ -53,11 +32,28 @@
             0%, 100% { opacity: 1; }
             50% { opacity: .5; }
         }
+        [x-cloak] { display: none !important; }
+        
+        /* Стили для скроллбара */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body class="bg-gray-50 font-sans min-h-screen">
     <!-- Alpine.js Component Container -->
-    <div x-data="cognitiveBiasApp" class="min-h-screen">
+    <div x-data="cognitiveBiasApp" x-init="init()" class="min-h-screen">
         <!-- Header -->
         <header class="gradient-bg text-white shadow-lg">
             <div class="container mx-auto px-4 py-6">
@@ -70,12 +66,12 @@
                     </div>
                     <div class="flex space-x-4">
                         <button @click="activeTab = 'analyze'" 
-                                :class="activeTab === 'analyze' ? 'bg-white text-primary-700' : 'bg-primary-700 text-white'"
+                                :class="activeTab === 'analyze' ? 'bg-white text-blue-700' : 'bg-blue-700 text-white'"
                                 class="px-4 py-2 rounded-lg font-semibold transition">
                             <i class="fas fa-search mr-2"></i>Анализ
                         </button>
                         <button @click="activeTab = 'history'"
-                                :class="activeTab === 'history' ? 'bg-white text-primary-700' : 'bg-primary-700 text-white'"
+                                :class="activeTab === 'history' ? 'bg-white text-blue-700' : 'bg-blue-700 text-white'"
                                 class="px-4 py-2 rounded-lg font-semibold transition">
                             <i class="fas fa-history mr-2"></i>История
                         </button>
@@ -91,24 +87,24 @@
                 <!-- Model Loading Status -->
                 <div x-show="isLoadingModel" class="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
                     <div class="loading-bar mb-4">
-                        <i class="fas fa-cog fa-spin text-4xl text-primary-600"></i>
+                        <i class="fas fa-cog fa-spin text-4xl text-blue-600"></i>
                     </div>
                     <h3 class="text-xl font-semibold text-blue-800 mb-2">Загрузка AI-модели</h3>
                     <p class="text-blue-600" x-text="loadingProgress"></p>
                     <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
-                        <div class="bg-primary-600 h-2.5 rounded-full" :style="`width: ${modelLoadProgress}%`"></div>
+                        <div class="bg-blue-600 h-2.5 rounded-full" :style="`width: ${modelLoadProgress}%`"></div>
                     </div>
                 </div>
 
                 <!-- Thought Input -->
                 <div x-show="!isLoadingModel" class="bg-white rounded-2xl shadow-xl p-6">
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">
-                        <i class="fas fa-edit mr-3 text-primary-500"></i>Введите вашу мысль
+                        <i class="fas fa-edit mr-3 text-blue-500"></i>Введите вашу мысль
                     </h2>
                     <textarea 
                         x-model="userThought"
                         placeholder="Опишите мысль или ситуацию, которую хотите проанализировать. Например: 'Если я не сдам проект идеально, меня уволят'..."
-                        class="w-full thought-input p-4 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition"
+                        class="w-full thought-input p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
                         :disabled="isAnalyzing"></textarea>
                     
                     <div class="flex flex-col sm:flex-row justify-between items-center mt-6 space-y-4 sm:space-y-0">
@@ -122,7 +118,7 @@
                             </button>
                             <button @click="analyzeThought()"
                                     :disabled="!userThought.trim() || isAnalyzing"
-                                    :class="!userThought.trim() || isAnalyzing ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700'"
+                                    :class="!userThought.trim() || isAnalyzing ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
                                     class="px-5 py-2.5 text-white font-semibold rounded-lg transition">
                                 <i class="fas fa-play mr-2"></i>
                                 <span x-text="isAnalyzing ? 'Анализ...' : 'Проанализировать'"></span>
@@ -144,7 +140,7 @@
                                        class="w-32" @change="filterResults()">
                                 <span class="ml-2 font-mono" x-text="(confidenceThreshold * 100).toFixed(0) + '%'"></span>
                             </div>
-                            <button @click="saveToHistory()" class="text-primary-600 hover:text-primary-800">
+                            <button @click="saveToHistory()" class="text-blue-600 hover:text-blue-800">
                                 <i class="fas fa-save text-lg"></i>
                             </button>
                         </div>
@@ -178,7 +174,7 @@
                                         <p class="text-gray-600 text-sm mt-1" x-text="result.description"></p>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-2xl font-bold text-primary-700" 
+                                        <div class="text-2xl font-bold text-blue-700" 
                                              x-text="(result.score * 100).toFixed(1) + '%'"></div>
                                         <div class="text-xs text-gray-500">уверенность</div>
                                     </div>
@@ -199,7 +195,7 @@
             <!-- History Section -->
             <div x-show="activeTab === 'history'" x-cloak class="bg-white rounded-2xl shadow-xl p-6">
                 <h2 class="text-2xl font-bold text-gray-800 mb-6">
-                    <i class="fas fa-history mr-3 text-primary-500"></i>История анализов
+                    <i class="fas fa-history mr-3 text-blue-500"></i>История анализов
                 </h2>
                 
                 <div x-show="!history || history.length === 0" class="text-center py-12">
@@ -220,7 +216,7 @@
                                         <span x-text="item.results.length + ' искажений'"></span>
                                     </div>
                                 </div>
-                                <button @click="loadFromHistory(item)" class="text-primary-600 hover:text-primary-800 ml-4">
+                                <button @click="loadFromHistory(item)" class="text-blue-600 hover:text-blue-800 ml-4">
                                     <i class="fas fa-redo"></i>
                                 </button>
                             </div>
@@ -241,7 +237,7 @@
                     <button @click="clearHistory()" class="px-4 py-2 text-red-600 hover:text-red-800">
                         <i class="fas fa-trash mr-2"></i>Очистить историю
                     </button>
-                    <button @click="exportHistory()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
+                    <button @click="exportHistory()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                         <i class="fas fa-download mr-2"></i>Экспорт истории
                     </button>
                 </div>
@@ -254,7 +250,7 @@
                 <div class="flex flex-col md:flex-row justify-between items-center">
                     <div class="mb-4 md:mb-0">
                         <div class="flex items-center">
-                            <i class="fas fa-brain text-2xl text-primary-600 mr-3"></i>
+                            <i class="fas fa-brain text-2xl text-blue-600 mr-3"></i>
                             <span class="text-xl font-bold text-gray-800">CognitiveBiasGauge</span>
                         </div>
                         <p class="text-gray-600 text-sm mt-2">AI-powered cognitive bias analyzer</p>
@@ -276,19 +272,12 @@
                     <div class="text-xs text-gray-500 flex flex-wrap justify-center gap-4">
                         <div>
                             <i class="fas fa-microchip mr-1"></i>
-                            <span x-text="'Тензоры: ' + (performanceStats ? performanceStats.tensorCount : 0)"></span>
-                        </div>
-                        <div>
-                            <i class="fas fa-memory mr-1"></i>
-                            <span x-text="'Память: ' + (performanceStats ? performanceStats.memoryUsage : 0) + ' MB'"></span>
+                            <span x-text="'Анализов: ' + (performanceStats ? performanceStats.totalAnalyses : 0)"></span>
                         </div>
                         <div x-show="performanceStats && performanceStats.lastAnalysisTime > 0">
                             <i class="fas fa-stopwatch mr-1"></i>
-                            <span x-text="'Анализ: ' + performanceStats.lastAnalysisTime.toFixed(0) + 'ms'"></span>
+                            <span x-text="'Последний анализ: ' + performanceStats.lastAnalysisTime.toFixed(0) + 'ms'"></span>
                         </div>
-                        <button @click="cleanupMemory()" class="text-primary-600 hover:text-primary-800">
-                            <i class="fas fa-broom mr-1"></i>Очистить память
-                        </button>
                     </div>
                 </div>
             </div>
@@ -298,15 +287,12 @@
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
-    <!-- TensorFlow.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
-    
     <!-- Main Application Script -->
     <script>
         // Инициализируем глобальную переменную для Alpine.js
         window.cognitiveBiasApp = () => {
             return {
-                // Состояния (должны быть определены до первого рендера)
+                // Состояния
                 activeTab: 'analyze',
                 userThought: '',
                 isLoadingModel: true,
@@ -319,35 +305,29 @@
                 results: [],
                 history: [],
                 modelStatus: 'Загрузка модели...',
-                backendInfo: '',
+                backendInfo: 'WebGL',
                 
                 // Performance monitoring
                 performanceStats: {
                     lastAnalysisTime: 0,
-                    tensorCount: 0,
-                    memoryUsage: 0
+                    totalAnalyses: 0
                 },
                 
                 // Кеш эмбеддингов
-                embeddingCache: {},
+                embeddingCache: new Map(),
                 
                 // Инициализация при создании компонента
                 async init() {
                     console.log('Инициализация приложения...');
+                    
+                    // Создаем библиотеку искажений
                     this.biasLibrary = this.createBiasLibrary();
                     
-                    // Configure TensorFlow - используем только WebGL
-                    await this.configureTensorFlow();
-                    this.backendInfo = `Backend: WebGL`;
-                    
-                    // Load history from localStorage
+                    // Загружаем историю из localStorage
                     this.loadHistoryFromStorage();
                     
-                    // Load model
+                    // Загружаем модель
                     await this.loadModelWithProgress();
-                    
-                    // Start performance monitoring
-                    this.startPerformanceMonitoring();
                 },
                 
                 // Function to create bias library
@@ -428,54 +408,18 @@
                     ];
                 },
                 
-                // TensorFlow configuration
-                async configureTensorFlow() {
-                    try {
-                        // Используем WebGL - это работает везде
-                        await tf.setBackend('webgl');
-                        console.log('TensorFlow backend: WebGL');
-                        
-                        // Оптимизация для WebGL
-                        tf.ENV.set('WEBGL_CPU_FORWARD', false);
-                        tf.ENV.set('WEBGL_SIZE_UPLOAD_UNIFORM', 0);
-                        
-                    } catch (error) {
-                        console.error('TensorFlow configuration error:', error);
-                    }
-                },
-                
-                // Model loading function - используем более простую модель
+                // Model loading function
                 async loadModel() {
                     try {
                         // Используем динамический импорт для Transformers.js
-                        const script = document.createElement('script');
-                        script.type = 'module';
-                        script.textContent = `
-                            import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
-                            window.transformersReady = true;
-                            window.getTransformersPipeline = async () => {
-                                return await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-                                    quantized: true,
-                                    revision: 'main'
-                                });
-                            };
-                        `;
-                        document.head.appendChild(script);
+                        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
                         
-                        // Ждем загрузки Transformers.js
-                        await new Promise((resolve) => {
-                            const checkTransformers = () => {
-                                if (window.transformersReady) {
-                                    resolve();
-                                } else {
-                                    setTimeout(checkTransformers, 100);
-                                }
-                            };
-                            checkTransformers();
+                        // Используем маленькую модель для быстрой загрузки
+                        const extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+                            quantized: true,
+                            revision: 'main'
                         });
                         
-                        // Загружаем модель
-                        const extractor = await window.getTransformersPipeline();
                         console.log('Model loaded successfully');
                         return extractor;
                     } catch (error) {
@@ -503,9 +447,6 @@
                         this.modelStatus = 'Модель загружена ✓';
                         this.isLoadingModel = false;
                         
-                        // Save status to localStorage
-                        localStorage.setItem('modelLoaded', 'true');
-                        
                     } catch (error) {
                         console.error('Initialization error:', error);
                         this.modelStatus = 'Ошибка загрузки модели';
@@ -515,7 +456,7 @@
                         setTimeout(() => {
                             if (this.isLoadingModel) {
                                 this.modelStatus = 'Не удалось загрузить модель';
-                                this.loadingProgress = 'Пожалуйста, обновите страницу или проверьте соединение';
+                                this.loadingProgress = 'Пожалуйста, обновите страницу';
                             }
                         }, 5000);
                     }
@@ -526,14 +467,13 @@
                     for (let i = 0; i < this.biasLibrary.length; i++) {
                         const bias = this.biasLibrary[i];
                         try {
-                            // Используем правильный формат для модели
                             const embedding = await this.model(bias.passage, {
                                 pooling: 'mean',
                                 normalize: true
                             });
                             
-                            // Преобразуем в тензор TF.js
-                            bias.embedding = tf.tensor(Array.from(embedding.data));
+                            // Сохраняем эмбеддинг как обычный массив
+                            bias.embedding = Array.from(embedding.data);
                             
                             // Update progress
                             this.modelLoadProgress = 60 + Math.floor((i / this.biasLibrary.length) * 30);
@@ -558,9 +498,9 @@
                         // Кешируем эмбеддинги
                         const cacheKey = this.userThought.toLowerCase().trim();
                         
-                        let thoughtTensor;
-                        if (this.embeddingCache[cacheKey]) {
-                            thoughtTensor = this.embeddingCache[cacheKey];
+                        let thoughtEmbedding;
+                        if (this.embeddingCache.has(cacheKey)) {
+                            thoughtEmbedding = this.embeddingCache.get(cacheKey);
                         } else {
                             // Генерируем эмбеддинг для мысли пользователя
                             const embedding = await this.model(`query: ${this.userThought}`, {
@@ -568,13 +508,13 @@
                                 normalize: true
                             });
                             
-                            thoughtTensor = tf.tensor(Array.from(embedding.data));
-                            this.embeddingCache[cacheKey] = thoughtTensor;
+                            thoughtEmbedding = Array.from(embedding.data);
+                            this.embeddingCache.set(cacheKey, thoughtEmbedding);
                             
                             // Ограничиваем размер кеша
-                            const keys = Object.keys(this.embeddingCache);
-                            if (keys.length > 50) {
-                                delete this.embeddingCache[keys[0]];
+                            if (this.embeddingCache.size > 50) {
+                                const firstKey = this.embeddingCache.keys().next().value;
+                                this.embeddingCache.delete(firstKey);
                             }
                         }
                         
@@ -584,24 +524,17 @@
                         for (const bias of this.biasLibrary) {
                             if (!bias.embedding) continue;
                             
-                            try {
-                                // Косинусное сходство
-                                const similarity = this.cosineSimilarity(thoughtTensor, bias.embedding);
-                                const score = similarity.dataSync()[0];
-                                
-                                if (score >= this.confidenceThreshold) {
-                                    matches.push({
-                                        id: bias.id,
-                                        name: bias.name,
-                                        description: bias.description,
-                                        score: score,
-                                        rawScore: score
-                                    });
-                                }
-                                
-                                tf.dispose(similarity);
-                            } catch (error) {
-                                console.error(`Error computing similarity for ${bias.name}:`, error);
+                            // Вычисляем косинусное сходство между массивами
+                            const score = this.cosineSimilarity(thoughtEmbedding, bias.embedding);
+                            
+                            if (score >= this.confidenceThreshold) {
+                                matches.push({
+                                    id: bias.id,
+                                    name: bias.name,
+                                    description: bias.description,
+                                    score: score,
+                                    rawScore: score
+                                });
                             }
                         }
                         
@@ -610,6 +543,7 @@
                         this.results = matches;
                         
                         this.performanceStats.lastAnalysisTime = performance.now() - startTime;
+                        this.performanceStats.totalAnalyses++;
                         
                         console.log(`Анализ завершен за ${this.performanceStats.lastAnalysisTime.toFixed(2)}мс`);
                         
@@ -621,18 +555,28 @@
                     }
                 },
                 
-                // Вычисление косинусного сходства
+                // Косинусное сходство между двумя массивами (чистый JavaScript)
                 cosineSimilarity(a, b) {
-                    // Нормализуем тензоры
-                    const aNorm = tf.norm(a);
-                    const bNorm = tf.norm(b);
-                    
-                    if (aNorm.dataSync()[0] === 0 || bNorm.dataSync()[0] === 0) {
-                        return tf.scalar(0);
+                    if (a.length !== b.length) {
+                        console.error('Размеры векторов не совпадают');
+                        return 0;
                     }
                     
-                    const dotProduct = tf.sum(tf.mul(a, b));
-                    return tf.div(dotProduct, tf.mul(aNorm, bNorm));
+                    let dotProduct = 0;
+                    let normA = 0;
+                    let normB = 0;
+                    
+                    for (let i = 0; i < a.length; i++) {
+                        dotProduct += a[i] * b[i];
+                        normA += a[i] * a[i];
+                        normB += b[i] * b[i];
+                    }
+                    
+                    if (normA === 0 || normB === 0) {
+                        return 0;
+                    }
+                    
+                    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
                 },
                 
                 // Filter results by threshold
@@ -737,15 +681,6 @@
                     linkElement.click();
                 },
                 
-                // Start performance monitoring
-                startPerformanceMonitoring() {
-                    setInterval(() => {
-                        const mem = tf.memory();
-                        this.performanceStats.tensorCount = mem.numTensors;
-                        this.performanceStats.memoryUsage = Math.round(mem.numBytes / 1024 / 1024 * 100) / 100;
-                    }, 5000);
-                },
-                
                 // Show error
                 showError(title, message) {
                     alert(`${title}: ${message}`);
@@ -754,61 +689,11 @@
                 // Clean up memory
                 cleanupMemory() {
                     // Очищаем кеш эмбеддингов
-                    this.embeddingCache = {};
-                    
-                    // Собираем все тензоры для очистки
-                    const tensors = [];
-                    
-                    // Очищаем эмбеддинги искажений
-                    this.biasLibrary.forEach(bias => {
-                        if (bias.embedding) {
-                            tensors.push(bias.embedding);
-                        }
-                    });
-                    
-                    // Очищаем тензоры TF.js
-                    tensors.forEach(tensor => {
-                        try {
-                            tf.dispose(tensor);
-                        } catch (e) {
-                            // Игнорируем ошибки
-                        }
-                    });
-                    
-                    // Принудительно запускаем сборку мусора
-                    tf.engine().startScope();
-                    tf.engine().endScope();
-                    
-                    this.performanceStats.tensorCount = tf.memory().numTensors;
-                    this.performanceStats.memoryUsage = Math.round(tf.memory().numBytes / 1024 / 1024 * 100) / 100;
-                    
-                    alert('Память очищена!');
+                    this.embeddingCache.clear();
+                    alert('Кеш очищен!');
                 }
             };
         };
     </script>
-    
-    <style>
-        [x-cloak] { display: none !important; }
-        
-        /* Стили для скроллбара */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-    </style>
 </body>
 </html>
