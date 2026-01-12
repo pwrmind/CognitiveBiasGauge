@@ -302,6 +302,8 @@
                 confidenceThreshold: 0.3,
                 model: null,
                 biasLibrary: [],
+                isEmbedded: false,
+                isProcessing: false,
                 results: [],
                 history: [],
                 modelStatus: 'Загрузка модели...',
@@ -413,6 +415,12 @@
                 
                 // Model loading function
                 async loadModel() {
+                    // 1. Проверяем, не загружена ли уже модель
+                    if (this.model) {
+                        console.log('Model already loaded');
+                        return this.model;
+                    }
+
                     try {
                         // Используем динамический импорт для Transformers.js
                         const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0');
@@ -433,7 +441,10 @@
                 
                 // Generate embeddings for bias library (батчевая обработка)
                 async generateBiasEmbeddings() {
+                    if (this.isProcessing || this.isEmbedded) return;
+
                     try {
+                        this.isProcessing = true; // Блокируем повторные входы немедленно
                         // Собираем все тексты в один массив для батчевой обработки
                         const texts = this.biasLibrary.map(bias => bias.passage);
                         
@@ -451,11 +462,14 @@
                         // Update progress
                         this.modelLoadProgress = 90;
                         this.loadingProgress = 'Обработка искажений завершена';
-                        
+                    
+                        this.isEmbedded = true;
                     } catch (error) {
                         console.error('Error generating bias embeddings:', error);
                         // В случае ошибки генерируем эмбеддинги по одному
-                        await this.generateBiasEmbeddingsSequentially();
+                        //await this.generateBiasEmbeddingsSequentially();
+                    } finally {
+                        this.isProcessing = false; // Освобождаем флаг в любом случае
                     }
                 },
                 
@@ -490,11 +504,11 @@
                 async loadModelWithProgress() {
                     try {
                         this.loadingProgress = 'Загрузка модели MiniLM...';
-                        this.modelLoadProgress = 20;
+                        this.modelLoadProgress = 10;
                         
                         this.model = await this.loadModel();
                         
-                        this.modelLoadProgress = 60;
+                        this.modelLoadProgress = 50;
                         this.loadingProgress = 'Подготовка библиотеки искажений...';
                         
                         // Generate embeddings for bias library
