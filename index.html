@@ -57,7 +57,7 @@
 </head>
 <body class="bg-gray-50 font-sans min-h-screen">
     <!-- Alpine.js Component Container -->
-    <div x-data="cognitiveBiasApp()" x-init="init()" class="min-h-screen">
+    <div x-data="cognitiveBiasApp" class="min-h-screen">
         <!-- Header -->
         <header class="gradient-bg text-white shadow-lg">
             <div class="container mx-auto px-4 py-6">
@@ -79,11 +79,6 @@
                                 class="px-4 py-2 rounded-lg font-semibold transition">
                             <i class="fas fa-history mr-2"></i>История
                         </button>
-                        <button @click="activeTab = 'about'"
-                                :class="activeTab === 'about' ? 'bg-white text-primary-700' : 'bg-primary-700 text-white'"
-                                class="px-4 py-2 rounded-lg font-semibold transition">
-                            <i class="fas fa-info-circle mr-2"></i>О проекте
-                        </button>
                     </div>
                 </div>
             </div>
@@ -92,7 +87,7 @@
         <!-- Main Content -->
         <main class="container mx-auto px-4 py-8">
             <!-- Analysis Section -->
-            <div x-show="activeTab === 'analyze'" class="space-y-8">
+            <div x-show="activeTab === 'analyze'" x-cloak class="space-y-8">
                 <!-- Model Loading Status -->
                 <div x-show="isLoadingModel" class="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
                     <div class="loading-bar mb-4">
@@ -137,7 +132,7 @@
                 </div>
 
                 <!-- Analysis Results -->
-                <div x-show="results.length > 0 && !isAnalyzing" class="bg-white rounded-2xl shadow-xl p-6">
+                <div x-show="results && results.length > 0 && !isAnalyzing" class="bg-white rounded-2xl shadow-xl p-6">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-gray-800">
                             <i class="fas fa-chart-bar mr-3 text-green-500"></i>Результаты анализа
@@ -202,17 +197,17 @@
             </div>
 
             <!-- History Section -->
-            <div x-show="activeTab === 'history'" class="bg-white rounded-2xl shadow-xl p-6">
+            <div x-show="activeTab === 'history'" x-cloak class="bg-white rounded-2xl shadow-xl p-6">
                 <h2 class="text-2xl font-bold text-gray-800 mb-6">
                     <i class="fas fa-history mr-3 text-primary-500"></i>История анализов
                 </h2>
                 
-                <div x-show="history.length === 0" class="text-center py-12">
+                <div x-show="!history || history.length === 0" class="text-center py-12">
                     <i class="fas fa-clock text-5xl text-gray-300 mb-4"></i>
                     <p class="text-gray-500 text-lg">История анализов пуста</p>
                 </div>
 
-                <div class="space-y-4">
+                <div x-show="history && history.length > 0" class="space-y-4">
                     <template x-for="(item, index) in history.slice().reverse()" :key="item.id">
                         <div class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition">
                             <div class="flex justify-between items-start">
@@ -242,92 +237,13 @@
                     </template>
                 </div>
                 
-                <div x-show="history.length > 0" class="mt-6 flex justify-between items-center">
+                <div x-show="history && history.length > 0" class="mt-6 flex justify-between items-center">
                     <button @click="clearHistory()" class="px-4 py-2 text-red-600 hover:text-red-800">
                         <i class="fas fa-trash mr-2"></i>Очистить историю
                     </button>
                     <button @click="exportHistory()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
                         <i class="fas fa-download mr-2"></i>Экспорт истории
                     </button>
-                </div>
-            </div>
-
-            <!-- About Section -->
-            <div x-show="activeTab === 'about'" class="bg-white rounded-2xl shadow-xl p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">
-                    <i class="fas fa-info-circle mr-3 text-primary-500"></i>О проекте
-                </h2>
-                
-                <div class="prose max-w-none">
-                    <p class="text-gray-700 mb-4">
-                        <strong>CognitiveBiasGauge</strong> — это инструмент для анализа мыслей на наличие когнитивных искажений 
-                        с использованием искусственного интеллекта. Приложение использует современные ML-технологии 
-                        для семантического анализа текста.
-                    </p>
-                    
-                    <h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">Используемые технологии:</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <div class="text-primary-600 font-bold mb-1">Transformers.js</div>
-                            <div class="text-sm text-gray-600">Запуск модели Xenova/multilingual-e5-small в браузере</div>
-                        </div>
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <div class="text-primary-600 font-bold mb-1">TensorFlow.js</div>
-                            <div class="text-sm text-gray-600">Тензорные операции с поддержкой WebGPU</div>
-                        </div>
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <div class="text-primary-600 font-bold mb-1">Alpine.js</div>
-                            <div class="text-sm text-gray-600">Реактивная архитектура приложения</div>
-                        </div>
-                    </div>
-                    
-                    <h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">Обнаруживаемые когнитивные искажения:</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                        <div class="flex items-center">
-                            <i class="fas fa-circle text-xs text-blue-500 mr-2"></i>
-                            <span>Всё или ничего (дихотомическое мышление)</span>
-                        </div>
-                        <div class="flex items-center">
-                            <i class="fas fa-circle text-xs text-green-500 mr-2"></i>
-                            <span>Катастрофизация</span>
-                        </div>
-                        <div class="flex items-center">
-                            <i class="fas fa-circle text-xs text-purple-500 mr-2"></i>
-                            <span>Обесценивание положительного</span>
-                        </div>
-                        <div class="flex items-center">
-                            <i class="fas fa-circle text-xs text-yellow-500 mr-2"></i>
-                            <span>Эмоциональное обоснование</span>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <i class="fas fa-lightbulb text-yellow-400"></i>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm text-yellow-700">
-                                    <strong>Важно:</strong> Анализ выполняется полностью в вашем браузере. 
-                                    Ваши данные никуда не отправляются и сохраняются только локально.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <i class="fas fa-shield-alt text-blue-400"></i>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm text-blue-700">
-                                    <strong>Конфиденциальность:</strong> Все вычисления выполняются на вашем устройстве. 
-                                    Модель загружается один раз и работает офлайн.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </main>
@@ -360,13 +276,13 @@
                     <div class="text-xs text-gray-500 flex flex-wrap justify-center gap-4">
                         <div>
                             <i class="fas fa-microchip mr-1"></i>
-                            <span x-text="'Тензоры: ' + performanceStats.tensorCount"></span>
+                            <span x-text="'Тензоры: ' + (performanceStats ? performanceStats.tensorCount : 0)"></span>
                         </div>
                         <div>
                             <i class="fas fa-memory mr-1"></i>
-                            <span x-text="'Память: ' + performanceStats.memoryUsage + ' MB'"></span>
+                            <span x-text="'Память: ' + (performanceStats ? performanceStats.memoryUsage : 0) + ' MB'"></span>
                         </div>
-                        <div x-show="performanceStats.lastAnalysisTime > 0">
+                        <div x-show="performanceStats && performanceStats.lastAnalysisTime > 0">
                             <i class="fas fa-stopwatch mr-1"></i>
                             <span x-text="'Анализ: ' + performanceStats.lastAnalysisTime.toFixed(0) + 'ms'"></span>
                         </div>
@@ -386,240 +302,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
     
     <!-- Main Application Script -->
-    <script type="module">
-        // Импортируем Transformers.js через ES модули
-        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
-        
-        // Cache for embeddings
-        const embeddingCache = new Map();
-        
-        // Tensor memory manager
-        class TensorMemoryManager {
-            constructor(maxTensors = 500) {
-                this.maxTensors = maxTensors;
-                this.tensors = new Set();
-            }
-            
-            track(tensor) {
-                this.tensors.add(tensor);
-                
-                if (this.tensors.size > this.maxTensors) {
-                    this.cleanup();
-                }
-            }
-            
-            cleanup() {
-                console.log(`Cleaning up ${this.tensors.size} tensors`);
-                
-                for (const tensor of this.tensors) {
-                    try {
-                        tf.dispose(tensor);
-                    } catch (e) {
-                        // Ignore disposal errors
-                    }
-                }
-                
-                this.tensors.clear();
-                tf.engine().startScope();
-            }
-            
-            disposeAll() {
-                this.cleanup();
-                tf.disposeVariables();
-            }
-        }
-        
-        // Initialize memory manager
-        const memoryManager = new TensorMemoryManager();
-        
-        // Function to create bias library
-        function createBiasLibrary() {
-            return [
-                {
-                    id: 1,
-                    name: "Всё или ничего",
-                    description: "Оценка ситуаций в крайностях, без промежуточных вариантов.",
-                    passage: "passage: Дихотомическое мышление, черно-белое мышление, крайности, отсутствие полутонов, все или ничего, всегда или никогда, идеально или провал"
-                },
-                {
-                    id: 2,
-                    name: "Катастрофизация",
-                    description: "Преувеличение негативных последствий событий, ожидание худшего.",
-                    passage: "passage: Катастрофизация, преувеличение негатива, ожидание худшего, все рухнет, конец света, ужасные последствия, трагедия"
-                },
-                {
-                    id: 3,
-                    name: "Обесценивание положительного",
-                    description: "Игнорирование или минимизация положительных аспектов ситуации.",
-                    passage: "passage: Обесценивание положительного, игнорирование хорошего, минимизация успехов, не замечать позитив, отрицание достижений"
-                },
-                {
-                    id: 4,
-                    name: "Эмоциональное обоснование",
-                    description: "Оценка реальности на основе эмоций, а не фактов.",
-                    passage: "passage: Эмоциональное обоснование, чувства вместо фактов, эмоции как доказательство, верить чувствам а не разуму"
-                },
-                {
-                    id: 5,
-                    name: "Навешивание ярлыков",
-                    description: "Категоризация людей или ситуаций на основе единичных событий.",
-                    passage: "passage: Навешивание ярлыков, стереотипизация, обобщение по одному случаю, категоризация без оснований"
-                },
-                {
-                    id: 6,
-                    name: "Преувеличение/преуменьшение",
-                    description: "Искажение реальности, чрезмерное усиление негативных аспектов или умаление положительных.",
-                    passage: "passage: Преувеличение негатива, преуменьшение позитива, искажение масштабов, увеличение проблем, уменьшение успехов"
-                },
-                {
-                    id: 7,
-                    name: "Ментальный фильтр",
-                    description: "Фокусировка на негативных деталях, игнорирование положительных аспектов.",
-                    passage: "passage: Ментальный фильтр, негативный фильтр, замечать только плохое, игнорировать хорошее, выборочное внимание к негативу"
-                },
-                {
-                    id: 8,
-                    name: "Чтение мыслей",
-                    description: "Предположение о мыслях других без достаточных оснований.",
-                    passage: "passage: Чтение мыслей, предполагать что думают другие, домыслы о мнениях, приписывание мыслей"
-                },
-                {
-                    id: 9,
-                    name: "Сверхобобщение",
-                    description: "Выводы на основе ограниченного числа примеров, распространение частных случаев на общую картину.",
-                    passage: "passage: Сверхобобщение, делать глобальные выводы из частных случаев, обобщение без оснований, экстраполяция"
-                },
-                {
-                    id: 10,
-                    name: "Персонализация",
-                    description: "Восприятие событий как направленных лично против себя, принятие слишком большой ответственности за события.",
-                    passage: "passage: Персонализация, принимать на свой счет, винить себя за все, чувствовать себя целью, излишняя ответственность"
-                },
-                {
-                    id: 11,
-                    name: "Утверждения «мне следует» и «я должен»",
-                    description: "Жёсткие требования к себе и окружающим, использование долженствований.",
-                    passage: "passage: Долженствование, жесткие требования, я должен, мне следует, перфекционизм, негибкие правила"
-                },
-                {
-                    id: 12,
-                    name: "Туннельное зрение",
-                    description: "Сосредоточение на одной детали в ущерб общему контексту, упущение важной информации.",
-                    passage: "passage: Туннельное зрение, узкий фокус, игнорирование контекста, зацикленность на детали, упущение общей картины"
-                }
-            ];
-        }
-        
-        // Get thought embedding with cache
-        async function getThoughtEmbedding(model, text) {
-            const cacheKey = text.toLowerCase().trim();
-            
-            if (embeddingCache.has(cacheKey)) {
-                return embeddingCache.get(cacheKey);
-            }
-            
-            // Important: add query: prefix for user input
-            const embedding = await model(`query: ${text}`, {
-                pooling: 'mean',
-                normalize: true,
-                dtype: 'float32'
-            });
-            
-            const tensor = tf.tensor(Array.from(embedding.data));
-            embeddingCache.set(cacheKey, tensor);
-            
-            // Limit cache size
-            if (embeddingCache.size > 100) {
-                const firstKey = embeddingCache.keys().next().value;
-                embeddingCache.delete(firstKey);
-            }
-            
-            return tensor;
-        }
-        
-        // Batch similarity computation
-        async function computeSimilaritiesBatch(thoughtTensor, biasLibrary) {
-            const biasEmbeddings = biasLibrary
-                .filter(b => b.embedding)
-                .map(b => b.embedding);
-            
-            if (biasEmbeddings.length === 0) return [];
-            
-            const biasesTensor = tf.stack(biasEmbeddings);
-            const similarities = tf.matMul(
-                tf.reshape(thoughtTensor, [1, -1]),
-                biasesTensor.transpose()
-            );
-            
-            const scores = await similarities.data();
-            
-            const results = [];
-            for (let i = 0; i < biasLibrary.length; i++) {
-                if (!biasLibrary[i].embedding) continue;
-                
-                const score = scores[i];
-                if (score >= this.confidenceThreshold) {
-                    results.push({
-                        id: biasLibrary[i].id,
-                        name: biasLibrary[i].name,
-                        description: biasLibrary[i].description,
-                        score: score,
-                        rawScore: score
-                    });
-                }
-            }
-            
-            tf.dispose([biasesTensor, similarities]);
-            
-            return results.sort((a, b) => b.score - a.score);
-        }
-        
-        // TensorFlow WebGPU configuration
-        async function configureTensorFlowAdvanced() {
-            try {
-                // Check WebGPU availability
-                if (navigator.gpu) {
-                    console.log('WebGPU is available');
-                    
-                    try {
-                        // Try to use WebGPU backend
-                        await tf.setBackend('webgpu');
-                        console.log('WebGPU backend set');
-                    } catch (webgpuError) {
-                        console.warn('WebGPU backend failed, falling back to WebGL:', webgpuError);
-                        await tf.setBackend('webgl');
-                    }
-                } else {
-                    console.log('WebGPU not available, using WebGL');
-                    await tf.setBackend('webgl');
-                }
-                
-                console.log('TensorFlow backend:', tf.getBackend());
-                
-            } catch (error) {
-                console.error('TensorFlow configuration error:', error);
-            }
-        }
-        
-        // Model loading function
-        async function loadModel() {
-            try {
-                const extractor = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small', {
-                    quantized: true // Используем квантованную версию для меньшего размера
-                });
-                
-                console.log('Model loaded successfully');
-                return extractor;
-            } catch (error) {
-                console.error('Error loading model:', error);
-                throw error;
-            }
-        }
-        
-        // Main Alpine.js component
-        function cognitiveBiasApp() {
+    <script>
+        // Инициализируем глобальную переменную для Alpine.js
+        window.cognitiveBiasApp = () => {
             return {
-                // States
+                // Состояния (должны быть определены до первого рендера)
                 activeTab: 'analyze',
                 userThought: '',
                 isLoadingModel: true,
@@ -641,12 +328,13 @@
                     memoryUsage: 0
                 },
                 
-                // Initialization
+                // Инициализация при создании компонента
                 async init() {
-                    this.biasLibrary = createBiasLibrary();
+                    console.log('Инициализация приложения...');
+                    this.biasLibrary = this.createBiasLibrary();
                     
                     // Configure TensorFlow
-                    await configureTensorFlowAdvanced();
+                    await this.configureTensorFlowAdvanced();
                     this.backendInfo = `Backend: ${tf.getBackend()} | Device: ${navigator.gpu ? 'WebGPU capable' : 'WebGL'}`;
                     
                     // Load history from localStorage
@@ -659,13 +347,135 @@
                     this.startPerformanceMonitoring();
                 },
                 
+                // Function to create bias library
+                createBiasLibrary() {
+                    return [
+                        {
+                            id: 1,
+                            name: "Всё или ничего",
+                            description: "Оценка ситуаций в крайностях, без промежуточных вариантов.",
+                            passage: "passage: Дихотомическое мышление, черно-белое мышление, крайности, отсутствие полутонов, все или ничего, всегда или никогда, идеально или провал"
+                        },
+                        {
+                            id: 2,
+                            name: "Катастрофизация",
+                            description: "Преувеличение негативных последствий событий, ожидание худшего.",
+                            passage: "passage: Катастрофизация, преувеличение негатива, ожидание худшего, все рухнет, конец света, ужасные последствия, трагедия"
+                        },
+                        {
+                            id: 3,
+                            name: "Обесценивание положительного",
+                            description: "Игнорирование или минимизация положительных аспектов ситуации.",
+                            passage: "passage: Обесценивание положительного, игнорирование хорошего, минимизация успехов, не замечать позитив, отрицание достижений"
+                        },
+                        {
+                            id: 4,
+                            name: "Эмоциональное обоснование",
+                            description: "Оценка реальности на основе эмоций, а не фактов.",
+                            passage: "passage: Эмоциональное обоснование, чувства вместо фактов, эмоции как доказательство, верить чувствам а не разуму"
+                        },
+                        {
+                            id: 5,
+                            name: "Навешивание ярлыков",
+                            description: "Категоризация людей или ситуаций на основе единичных событий.",
+                            passage: "passage: Навешивание ярлыков, стереотипизация, обобщение по одному случаю, категоризация без оснований"
+                        },
+                        {
+                            id: 6,
+                            name: "Преувеличение/преуменьшение",
+                            description: "Искажение реальности, чрезмерное усиление негативных аспектов или умаление положительных.",
+                            passage: "passage: Преувеличение негатива, преуменьшение позитива, искажение масштабов, увеличение проблем, уменьшение успехов"
+                        },
+                        {
+                            id: 7,
+                            name: "Ментальный фильтр",
+                            description: "Фокусировка на негативных деталях, игнорирование положительных аспектов.",
+                            passage: "passage: Ментальный фильтр, негативный фильтр, замечать только плохое, игнорировать хорошее, выборочное внимание к негативу"
+                        },
+                        {
+                            id: 8,
+                            name: "Чтение мыслей",
+                            description: "Предположение о мыслях других без достаточных оснований.",
+                            passage: "passage: Чтение мыслей, предполагать что думают другие, домыслы о мнениях, приписывание мыслей"
+                        },
+                        {
+                            id: 9,
+                            name: "Сверхобобщение",
+                            description: "Выводы на основе ограниченного числа примеров, распространение частных случаев на общую картину.",
+                            passage: "passage: Сверхобобщение, делать глобальные выводы из частных случаев, обобщение без оснований, экстраполяция"
+                        },
+                        {
+                            id: 10,
+                            name: "Персонализация",
+                            description: "Восприятие событий как направленных лично против себя, принятие слишком большой ответственности за события.",
+                            passage: "passage: Персонализация, принимать на свой счет, винить себя за все, чувствовать себя целью, излишняя ответственность"
+                        },
+                        {
+                            id: 11,
+                            name: "Утверждения «мне следует» и «я должен»",
+                            description: "Жёсткие требования к себе и окружающим, использование долженствований.",
+                            passage: "passage: Долженствование, жесткие требования, я должен, мне следует, перфекционизм, негибкие правила"
+                        },
+                        {
+                            id: 12,
+                            name: "Туннельное зрение",
+                            description: "Сосредоточение на одной детали в ущерб общему контексту, упущение важной информации.",
+                            passage: "passage: Туннельное зрение, узкий фокус, игнорирование контекста, зацикленность на детали, упущение общей картины"
+                        }
+                    ];
+                },
+                
+                // TensorFlow WebGPU configuration
+                async configureTensorFlowAdvanced() {
+                    try {
+                        // Check WebGPU availability
+                        if (navigator.gpu) {
+                            console.log('WebGPU is available');
+                            
+                            try {
+                                // Try to use WebGPU backend
+                                await tf.setBackend('webgpu');
+                                console.log('WebGPU backend set');
+                            } catch (webgpuError) {
+                                console.warn('WebGPU backend failed, falling back to WebGL:', webgpuError);
+                                await tf.setBackend('webgl');
+                            }
+                        } else {
+                            console.log('WebGPU not available, using WebGL');
+                            await tf.setBackend('webgl');
+                        }
+                        
+                        console.log('TensorFlow backend:', tf.getBackend());
+                        
+                    } catch (error) {
+                        console.error('TensorFlow configuration error:', error);
+                    }
+                },
+                
+                // Model loading function
+                async loadModel() {
+                    try {
+                        // Динамический импорт Transformers.js
+                        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
+                        const extractor = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small', {
+                            quantized: true // Используем квантованную версию для меньшего размера
+                        });
+                        
+                        console.log('Model loaded successfully');
+                        return extractor;
+                    } catch (error) {
+                        console.error('Error loading model:', error);
+                        throw error;
+                    }
+                },
+                
                 // Model loading with progress
                 async loadModelWithProgress() {
                     try {
                         this.loadingProgress = 'Загрузка модели E5...';
                         this.modelLoadProgress = 20;
                         
-                        this.model = await loadModel();
+                        this.model = await this.loadModel();
                         
                         this.modelLoadProgress = 60;
                         this.loadingProgress = 'Подготовка библиотеки искажений...';
@@ -699,7 +509,6 @@
                             });
                             
                             bias.embedding = tf.tensor(Array.from(embedding.data));
-                            memoryManager.track(bias.embedding);
                             
                             // Update progress
                             this.modelLoadProgress = 60 + Math.floor((i / this.biasLibrary.length) * 30);
@@ -720,10 +529,9 @@
                     this.results = [];
                     
                     try {
-                        const thoughtTensor = await getThoughtEmbedding(this.model, this.userThought);
-                        memoryManager.track(thoughtTensor);
+                        const thoughtTensor = await this.getThoughtEmbedding(this.model, this.userThought);
                         
-                        const matches = await computeSimilaritiesBatch.call(this, thoughtTensor, this.biasLibrary);
+                        const matches = await this.computeSimilaritiesBatch(thoughtTensor, this.biasLibrary);
                         this.results = matches;
                         
                         this.performanceStats.lastAnalysisTime = performance.now() - startTime;
@@ -738,17 +546,68 @@
                     }
                 },
                 
-                // Cosine similarity calculation
-                cosineSimilarity(a, b) {
-                    const aNorm = tf.norm(a);
-                    const bNorm = tf.norm(b);
+                // Get thought embedding with cache
+                async getThoughtEmbedding(model, text) {
+                    const cacheKey = text.toLowerCase().trim();
                     
-                    if (aNorm.dataSync()[0] === 0 || bNorm.dataSync()[0] === 0) {
-                        return tf.scalar(0);
+                    // Простой кеш
+                    if (window.embeddingCache && window.embeddingCache.has(cacheKey)) {
+                        return window.embeddingCache.get(cacheKey);
                     }
                     
-                    const dotProduct = tf.sum(tf.mul(a, b));
-                    return tf.div(dotProduct, tf.mul(aNorm, bNorm));
+                    // Important: add query: prefix for user input
+                    const embedding = await model(`query: ${text}`, {
+                        pooling: 'mean',
+                        normalize: true,
+                        dtype: 'float32'
+                    });
+                    
+                    const tensor = tf.tensor(Array.from(embedding.data));
+                    
+                    // Инициализируем кеш если нужно
+                    if (!window.embeddingCache) {
+                        window.embeddingCache = new Map();
+                    }
+                    window.embeddingCache.set(cacheKey, tensor);
+                    
+                    return tensor;
+                },
+                
+                // Batch similarity computation
+                async computeSimilaritiesBatch(thoughtTensor, biasLibrary) {
+                    const biasEmbeddings = biasLibrary
+                        .filter(b => b.embedding)
+                        .map(b => b.embedding);
+                    
+                    if (biasEmbeddings.length === 0) return [];
+                    
+                    const biasesTensor = tf.stack(biasEmbeddings);
+                    const similarities = tf.matMul(
+                        tf.reshape(thoughtTensor, [1, -1]),
+                        biasesTensor.transpose()
+                    );
+                    
+                    const scores = await similarities.data();
+                    
+                    const results = [];
+                    for (let i = 0; i < biasLibrary.length; i++) {
+                        if (!biasLibrary[i].embedding) continue;
+                        
+                        const score = scores[i];
+                        if (score >= this.confidenceThreshold) {
+                            results.push({
+                                id: biasLibrary[i].id,
+                                name: biasLibrary[i].name,
+                                description: biasLibrary[i].description,
+                                score: score,
+                                rawScore: score
+                            });
+                        }
+                    }
+                    
+                    tf.dispose([biasesTensor, similarities]);
+                    
+                    return results.sort((a, b) => b.score - a.score);
                 },
                 
                 // Filter results by threshold
@@ -823,7 +682,7 @@
                     
                     // Scroll to results
                     setTimeout(() => {
-                        const resultsElement = document.querySelector('[x-show="results.length > 0"]');
+                        const resultsElement = document.querySelector('[x-show*="results.length"]');
                         if (resultsElement) {
                             resultsElement.scrollIntoView({ 
                                 behavior: 'smooth' 
@@ -869,16 +728,30 @@
                 
                 // Clean up memory
                 cleanupMemory() {
-                    memoryManager.disposeAll();
-                    embeddingCache.clear();
+                    // Очищаем тензоры
+                    const tensors = tf.engine().state.registeredVariables;
+                    Object.keys(tensors).forEach(key => {
+                        try {
+                            tf.dispose(tensors[key]);
+                        } catch (e) {
+                            // Игнорируем ошибки
+                        }
+                    });
+                    
+                    // Очищаем кеш
+                    if (window.embeddingCache) {
+                        window.embeddingCache.clear();
+                    }
+                    
                     this.performanceStats.tensorCount = tf.memory().numTensors;
                     alert('Память очищена');
                 }
             };
-        }
-        
-        // Make cognitiveBiasApp available globally for Alpine.js
-        window.cognitiveBiasApp = cognitiveBiasApp;
+        };
     </script>
+    
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </body>
 </html>
