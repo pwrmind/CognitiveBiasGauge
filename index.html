@@ -316,6 +316,9 @@
                 // Кеш эмбеддингов
                 embeddingCache: new Map(),
                 
+                // Семафор для контроля доступа к модели
+                modelLock: false,
+                
                 // Инициализация при создании компонента
                 async init() {
                     console.log('Инициализация приложения...');
@@ -391,7 +394,7 @@
                             id: 10,
                             name: "Персонализация",
                             description: "Восприятие событий как направленных лично против себя, принятие слишком большой ответственности за события.",
-                            passage: "passage: Персонализация, принимать на свой счет, винить себя за все, чувствовать себя целью, излишняя ответственность"
+                            passage: "passage: Персонализация, принимать на свой счет, винить себя за все, чувствовать себя цель, излишняя ответственность"
                         },
                         {
                             id: 11,
@@ -428,8 +431,36 @@
                     }
                 },
                 
-                // Generate embeddings for bias library
+                // Generate embeddings for bias library (батчевая обработка)
                 async generateBiasEmbeddings() {
+                    try {
+                        // Собираем все тексты в один массив для батчевой обработки
+                        const texts = this.biasLibrary.map(bias => bias.passage);
+                        
+                        // Генерируем эмбеддинги для всех текстов сразу
+                        const embeddings = await this.model(texts, {
+                            pooling: 'mean',
+                            normalize: true
+                        });
+                        
+                        // Сохраняем эмбеддинги
+                        for (let i = 0; i < this.biasLibrary.length; i++) {
+                            this.biasLibrary[i].embedding = Array.from(embeddings[i].data);
+                        }
+                        
+                        // Update progress
+                        this.modelLoadProgress = 90;
+                        this.loadingProgress = 'Обработка искажений завершена';
+                        
+                    } catch (error) {
+                        console.error('Error generating bias embeddings:', error);
+                        // В случае ошибки генерируем эмбеддинги по одному
+                        await this.generateBiasEmbeddingsSequentially();
+                    }
+                },
+                
+                // Альтернативный метод: генерация эмбеддингов по одному
+                async generateBiasEmbeddingsSequentially() {
                     for (let i = 0; i < this.biasLibrary.length; i++) {
                         const bias = this.biasLibrary[i];
                         try {
@@ -444,6 +475,9 @@
                             // Update progress
                             this.modelLoadProgress = 60 + Math.floor((i / this.biasLibrary.length) * 30);
                             this.loadingProgress = `Обработка искажений: ${i + 1}/${this.biasLibrary.length}`;
+                            
+                            // Небольшая задержка между запросами
+                            await new Promise(resolve => setTimeout(resolve, 100));
                             
                         } catch (error) {
                             console.error(`Error generating embedding for ${bias.name}:`, error);
@@ -486,14 +520,13 @@
                     }
                 },
                 
-                
-                
-                // Main analysis function
+                // Main analysis function с блокировкой
                 async analyzeThought() {
-                    if (!this.userThought.trim() || !this.model) return;
+                    if (!this.userThought.trim() || !this.model || this.modelLock) return;
                     
                     const startTime = performance.now();
                     this.isAnalyzing = true;
+                    this.modelLock = true; // Блокируем модель
                     this.results = [];
                     
                     try {
@@ -554,6 +587,7 @@
                         this.showError('Ошибка анализа', 'Пожалуйста, попробуйте снова или введите другой текст.');
                     } finally {
                         this.isAnalyzing = false;
+                        this.modelLock = false; // Разблокируем модель
                     }
                 },
                 
