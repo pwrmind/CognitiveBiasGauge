@@ -14,7 +14,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS Production Build -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -379,12 +379,17 @@
         </footer>
     </div>
 
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.0"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <!-- Main Application Script -->
-    <script>
+    <script type="module">
+        // Импортируем Transformers.js через ES модули
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
+        
         // Cache for embeddings
         const embeddingCache = new Map();
         
@@ -577,17 +582,11 @@
                     console.log('WebGPU is available');
                     
                     try {
-                        const adapter = await navigator.gpu.requestAdapter();
-                        const device = await adapter.requestDevice();
-                        
-                        tf.ENV.set('WEBGPU_CPU_FORWARD', false);
-                        tf.ENV.set('WEBGPU_THREADS_PER_WORKGROUP', 256);
-                        tf.ENV.set('WEBGPU_MAX_TEXTURE_SIZE', 8192);
-                        
-                        console.log('WebGPU device initialized:', adapter.info.description);
-                        
+                        // Try to use WebGPU backend
+                        await tf.setBackend('webgpu');
+                        console.log('WebGPU backend set');
                     } catch (webgpuError) {
-                        console.warn('WebGPU initialization failed:', webgpuError);
+                        console.warn('WebGPU backend failed, falling back to WebGL:', webgpuError);
                         await tf.setBackend('webgl');
                     }
                 } else {
@@ -595,13 +594,7 @@
                     await tf.setBackend('webgl');
                 }
                 
-                // Memory optimization
-                tf.ENV.set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
-                tf.ENV.set('WEBGL_FLUSH_THRESHOLD', -1);
-                
-                // Enable automatic memory cleanup
-                const memoryInfo = tf.memory();
-                console.log('TF Memory:', memoryInfo);
+                console.log('TensorFlow backend:', tf.getBackend());
                 
             } catch (error) {
                 console.error('TensorFlow configuration error:', error);
@@ -611,11 +604,8 @@
         // Model loading function
         async function loadModel() {
             try {
-                const { pipeline } = transformers;
                 const extractor = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small', {
-                    device: 'webgpu',
-                    revision: 'main',
-                    quantized: false
+                    quantized: true // Используем квантованную версию для меньшего размера
                 });
                 
                 console.log('Model loaded successfully');
@@ -833,9 +823,12 @@
                     
                     // Scroll to results
                     setTimeout(() => {
-                        document.querySelector('[x-show="results.length > 0"]')?.scrollIntoView({ 
-                            behavior: 'smooth' 
-                        });
+                        const resultsElement = document.querySelector('[x-show="results.length > 0"]');
+                        if (resultsElement) {
+                            resultsElement.scrollIntoView({ 
+                                behavior: 'smooth' 
+                            });
+                        }
                     }, 100);
                 },
                 
@@ -883,6 +876,9 @@
                 }
             };
         }
+        
+        // Make cognitiveBiasApp available globally for Alpine.js
+        window.cognitiveBiasApp = cognitiveBiasApp;
     </script>
 </body>
 </html>
