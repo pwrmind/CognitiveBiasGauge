@@ -328,14 +328,17 @@
                     memoryUsage: 0
                 },
                 
+                // Кеш эмбеддингов
+                embeddingCache: {},
+                
                 // Инициализация при создании компонента
                 async init() {
                     console.log('Инициализация приложения...');
                     this.biasLibrary = this.createBiasLibrary();
                     
-                    // Configure TensorFlow
-                    await this.configureTensorFlowAdvanced();
-                    this.backendInfo = `Backend: ${tf.getBackend()} | Device: ${navigator.gpu ? 'WebGPU capable' : 'WebGL'}`;
+                    // Configure TensorFlow - используем только WebGL
+                    await this.configureTensorFlow();
+                    this.backendInfo = `Backend: WebGL`;
                     
                     // Load history from localStorage
                     this.loadHistoryFromStorage();
@@ -425,42 +428,54 @@
                     ];
                 },
                 
-                // TensorFlow WebGPU configuration
-                async configureTensorFlowAdvanced() {
+                // TensorFlow configuration
+                async configureTensorFlow() {
                     try {
-                        // Check WebGPU availability
-                        if (navigator.gpu) {
-                            console.log('WebGPU is available');
-                            
-                            try {
-                                // Try to use WebGPU backend
-                                await tf.setBackend('webgpu');
-                                console.log('WebGPU backend set');
-                            } catch (webgpuError) {
-                                console.warn('WebGPU backend failed, falling back to WebGL:', webgpuError);
-                                await tf.setBackend('webgl');
-                            }
-                        } else {
-                            console.log('WebGPU not available, using WebGL');
-                            await tf.setBackend('webgl');
-                        }
+                        // Используем WebGL - это работает везде
+                        await tf.setBackend('webgl');
+                        console.log('TensorFlow backend: WebGL');
                         
-                        console.log('TensorFlow backend:', tf.getBackend());
+                        // Оптимизация для WebGL
+                        tf.ENV.set('WEBGL_CPU_FORWARD', false);
+                        tf.ENV.set('WEBGL_SIZE_UPLOAD_UNIFORM', 0);
                         
                     } catch (error) {
                         console.error('TensorFlow configuration error:', error);
                     }
                 },
                 
-                // Model loading function
+                // Model loading function - используем более простую модель
                 async loadModel() {
                     try {
-                        // Динамический импорт Transformers.js
-                        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
-                        const extractor = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small', {
-                            quantized: true // Используем квантованную версию для меньшего размера
+                        // Используем динамический импорт для Transformers.js
+                        const script = document.createElement('script');
+                        script.type = 'module';
+                        script.textContent = `
+                            import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
+                            window.transformersReady = true;
+                            window.getTransformersPipeline = async () => {
+                                return await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+                                    quantized: true,
+                                    revision: 'main'
+                                });
+                            };
+                        `;
+                        document.head.appendChild(script);
+                        
+                        // Ждем загрузки Transformers.js
+                        await new Promise((resolve) => {
+                            const checkTransformers = () => {
+                                if (window.transformersReady) {
+                                    resolve();
+                                } else {
+                                    setTimeout(checkTransformers, 100);
+                                }
+                            };
+                            checkTransformers();
                         });
                         
+                        // Загружаем модель
+                        const extractor = await window.getTransformersPipeline();
                         console.log('Model loaded successfully');
                         return extractor;
                     } catch (error) {
@@ -472,7 +487,7 @@
                 // Model loading with progress
                 async loadModelWithProgress() {
                     try {
-                        this.loadingProgress = 'Загрузка модели E5...';
+                        this.loadingProgress = 'Загрузка модели MiniLM...';
                         this.modelLoadProgress = 20;
                         
                         this.model = await this.loadModel();
@@ -495,6 +510,14 @@
                         console.error('Initialization error:', error);
                         this.modelStatus = 'Ошибка загрузки модели';
                         this.loadingProgress = 'Ошибка: ' + error.message;
+                        
+                        // Если модель не загрузилась, показываем сообщение
+                        setTimeout(() => {
+                            if (this.isLoadingModel) {
+                                this.modelStatus = 'Не удалось загрузить модель';
+                                this.loadingProgress = 'Пожалуйста, обновите страницу или проверьте соединение';
+                            }
+                        }, 5000);
                     }
                 },
                 
@@ -503,11 +526,13 @@
                     for (let i = 0; i < this.biasLibrary.length; i++) {
                         const bias = this.biasLibrary[i];
                         try {
+                            // Используем правильный формат для модели
                             const embedding = await this.model(bias.passage, {
                                 pooling: 'mean',
                                 normalize: true
                             });
                             
+                            // Преобразуем в тензор TF.js
                             bias.embedding = tf.tensor(Array.from(embedding.data));
                             
                             // Update progress
@@ -516,6 +541,7 @@
                             
                         } catch (error) {
                             console.error(`Error generating embedding for ${bias.name}:`, error);
+                            // Продолжаем с другими искажениями
                         }
                     }
                 },
@@ -529,85 +555,84 @@
                     this.results = [];
                     
                     try {
-                        const thoughtTensor = await this.getThoughtEmbedding(this.model, this.userThought);
+                        // Кешируем эмбеддинги
+                        const cacheKey = this.userThought.toLowerCase().trim();
                         
-                        const matches = await this.computeSimilaritiesBatch(thoughtTensor, this.biasLibrary);
+                        let thoughtTensor;
+                        if (this.embeddingCache[cacheKey]) {
+                            thoughtTensor = this.embeddingCache[cacheKey];
+                        } else {
+                            // Генерируем эмбеддинг для мысли пользователя
+                            const embedding = await this.model(`query: ${this.userThought}`, {
+                                pooling: 'mean',
+                                normalize: true
+                            });
+                            
+                            thoughtTensor = tf.tensor(Array.from(embedding.data));
+                            this.embeddingCache[cacheKey] = thoughtTensor;
+                            
+                            // Ограничиваем размер кеша
+                            const keys = Object.keys(this.embeddingCache);
+                            if (keys.length > 50) {
+                                delete this.embeddingCache[keys[0]];
+                            }
+                        }
+                        
+                        // Вычисляем сходство со всеми искажениями
+                        const matches = [];
+                        
+                        for (const bias of this.biasLibrary) {
+                            if (!bias.embedding) continue;
+                            
+                            try {
+                                // Косинусное сходство
+                                const similarity = this.cosineSimilarity(thoughtTensor, bias.embedding);
+                                const score = similarity.dataSync()[0];
+                                
+                                if (score >= this.confidenceThreshold) {
+                                    matches.push({
+                                        id: bias.id,
+                                        name: bias.name,
+                                        description: bias.description,
+                                        score: score,
+                                        rawScore: score
+                                    });
+                                }
+                                
+                                tf.dispose(similarity);
+                            } catch (error) {
+                                console.error(`Error computing similarity for ${bias.name}:`, error);
+                            }
+                        }
+                        
+                        // Сортировка по убыванию сходства
+                        matches.sort((a, b) => b.score - a.score);
                         this.results = matches;
                         
                         this.performanceStats.lastAnalysisTime = performance.now() - startTime;
                         
-                        console.log(`Analysis completed in ${this.performanceStats.lastAnalysisTime.toFixed(2)}ms`);
+                        console.log(`Анализ завершен за ${this.performanceStats.lastAnalysisTime.toFixed(2)}мс`);
                         
                     } catch (error) {
-                        console.error('Analysis error:', error);
-                        this.showError('Ошибка анализа', error.message);
+                        console.error('Ошибка анализа:', error);
+                        this.showError('Ошибка анализа', 'Пожалуйста, попробуйте снова или введите другой текст.');
                     } finally {
                         this.isAnalyzing = false;
                     }
                 },
                 
-                // Get thought embedding with cache
-                async getThoughtEmbedding(model, text) {
-                    const cacheKey = text.toLowerCase().trim();
+                // Вычисление косинусного сходства
+                cosineSimilarity(a, b) {
+                    // Нормализуем тензоры
+                    const aNorm = tf.norm(a);
+                    const bNorm = tf.norm(b);
                     
-                    // Простой кеш
-                    if (window.embeddingCache && window.embeddingCache.has(cacheKey)) {
-                        return window.embeddingCache.get(cacheKey);
+                    if (aNorm.dataSync()[0] === 0 || bNorm.dataSync()[0] === 0) {
+                        return tf.scalar(0);
                     }
                     
-                    // Important: add query: prefix for user input
-                    const embedding = await model(`query: ${text}`, {
-                        pooling: 'mean',
-                        normalize: true,
-                        dtype: 'float32'
-                    });
-                    
-                    const tensor = tf.tensor(Array.from(embedding.data));
-                    
-                    // Инициализируем кеш если нужно
-                    if (!window.embeddingCache) {
-                        window.embeddingCache = new Map();
-                    }
-                    window.embeddingCache.set(cacheKey, tensor);
-                    
-                    return tensor;
-                },
-                
-                // Batch similarity computation
-                async computeSimilaritiesBatch(thoughtTensor, biasLibrary) {
-                    const biasEmbeddings = biasLibrary
-                        .filter(b => b.embedding)
-                        .map(b => b.embedding);
-                    
-                    if (biasEmbeddings.length === 0) return [];
-                    
-                    const biasesTensor = tf.stack(biasEmbeddings);
-                    const similarities = tf.matMul(
-                        tf.reshape(thoughtTensor, [1, -1]),
-                        biasesTensor.transpose()
-                    );
-                    
-                    const scores = await similarities.data();
-                    
-                    const results = [];
-                    for (let i = 0; i < biasLibrary.length; i++) {
-                        if (!biasLibrary[i].embedding) continue;
-                        
-                        const score = scores[i];
-                        if (score >= this.confidenceThreshold) {
-                            results.push({
-                                id: biasLibrary[i].id,
-                                name: biasLibrary[i].name,
-                                description: biasLibrary[i].description,
-                                score: score,
-                                rawScore: score
-                            });
-                        }
-                    }
-                    
-                    tf.dispose([biasesTensor, similarities]);
-                    
-                    return results.sort((a, b) => b.score - a.score);
+                    const dotProduct = tf.sum(tf.mul(a, b));
+                    return tf.div(dotProduct, tf.mul(aNorm, bNorm));
                 },
                 
                 // Filter results by threshold
@@ -728,23 +753,36 @@
                 
                 // Clean up memory
                 cleanupMemory() {
-                    // Очищаем тензоры
-                    const tensors = tf.engine().state.registeredVariables;
-                    Object.keys(tensors).forEach(key => {
+                    // Очищаем кеш эмбеддингов
+                    this.embeddingCache = {};
+                    
+                    // Собираем все тензоры для очистки
+                    const tensors = [];
+                    
+                    // Очищаем эмбеддинги искажений
+                    this.biasLibrary.forEach(bias => {
+                        if (bias.embedding) {
+                            tensors.push(bias.embedding);
+                        }
+                    });
+                    
+                    // Очищаем тензоры TF.js
+                    tensors.forEach(tensor => {
                         try {
-                            tf.dispose(tensors[key]);
+                            tf.dispose(tensor);
                         } catch (e) {
                             // Игнорируем ошибки
                         }
                     });
                     
-                    // Очищаем кеш
-                    if (window.embeddingCache) {
-                        window.embeddingCache.clear();
-                    }
+                    // Принудительно запускаем сборку мусора
+                    tf.engine().startScope();
+                    tf.engine().endScope();
                     
                     this.performanceStats.tensorCount = tf.memory().numTensors;
-                    alert('Память очищена');
+                    this.performanceStats.memoryUsage = Math.round(tf.memory().numBytes / 1024 / 1024 * 100) / 100;
+                    
+                    alert('Память очищена!');
                 }
             };
         };
@@ -752,6 +790,25 @@
     
     <style>
         [x-cloak] { display: none !important; }
+        
+        /* Стили для скроллбара */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </body>
 </html>
