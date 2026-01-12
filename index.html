@@ -412,12 +412,12 @@
                 async loadModel() {
                     try {
                         // Используем динамический импорт для Transformers.js
-                        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
+                        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0');
                         
                         // Используем маленькую модель для быстрой загрузки
-                        const extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-                            quantized: true,
-                            revision: 'main'
+                        const extractor = await pipeline('feature-extraction', 'Xenova/multilingual-e5-small', {
+                            device: 'webgpu', 
+                            dtype: 'q8', // Использование 8-битного квантования уменьшит потребление памяти
                         });
                         
                         console.log('Model loaded successfully');
@@ -428,6 +428,30 @@
                     }
                 },
                 
+                // Generate embeddings for bias library
+                async generateBiasEmbeddings() {
+                    for (let i = 0; i < this.biasLibrary.length; i++) {
+                        const bias = this.biasLibrary[i];
+                        try {
+                            const embedding = await this.model(bias.passage, {
+                                pooling: 'mean',
+                                normalize: true
+                            });
+                            
+                            // Сохраняем эмбеддинг как обычный массив
+                            bias.embedding = Array.from(embedding.data);
+                            
+                            // Update progress
+                            this.modelLoadProgress = 60 + Math.floor((i / this.biasLibrary.length) * 30);
+                            this.loadingProgress = `Обработка искажений: ${i + 1}/${this.biasLibrary.length}`;
+                            
+                        } catch (error) {
+                            console.error(`Error generating embedding for ${bias.name}:`, error);
+                            // Продолжаем с другими искажениями
+                        }
+                    }
+                },
+
                 // Model loading with progress
                 async loadModelWithProgress() {
                     try {
@@ -462,29 +486,7 @@
                     }
                 },
                 
-                // Generate embeddings for bias library
-                async generateBiasEmbeddings() {
-                    for (let i = 0; i < this.biasLibrary.length; i++) {
-                        const bias = this.biasLibrary[i];
-                        try {
-                            const embedding = await this.model(bias.passage, {
-                                pooling: 'mean',
-                                normalize: true
-                            });
-                            
-                            // Сохраняем эмбеддинг как обычный массив
-                            bias.embedding = Array.from(embedding.data);
-                            
-                            // Update progress
-                            this.modelLoadProgress = 60 + Math.floor((i / this.biasLibrary.length) * 30);
-                            this.loadingProgress = `Обработка искажений: ${i + 1}/${this.biasLibrary.length}`;
-                            
-                        } catch (error) {
-                            console.error(`Error generating embedding for ${bias.name}:`, error);
-                            // Продолжаем с другими искажениями
-                        }
-                    }
-                },
+                
                 
                 // Main analysis function
                 async analyzeThought() {
