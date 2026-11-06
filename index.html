@@ -3,36 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CognitiveBiasGauge · USER2-small</title>
+    <title>CognitiveBiasGauge · Custom NLI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         [x-cloak] { display: none !important; }
         .bias-card { transition: all 0.2s ease; }
         .bias-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased">
 
 <div x-data="cognitiveBiasApp" x-cloak class="max-w-5xl mx-auto px-4 py-8">
 
-    <!-- Заголовок -->
     <header class="text-center mb-10">
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">CognitiveBiasGauge</h1>
-        <p class="text-slate-500 mt-2">AI-анализатор когнитивных искажений на базе <span class="font-mono text-sm bg-slate-200 px-1.5 py-0.5 rounded">USER2-small</span></p>
-        <p class="text-xs text-slate-400 mt-1">Все вычисления выполняются локально в вашем браузере</p>
+        <p class="text-slate-500 mt-2">Анализатор когнитивных искажений на базе кастомной NLI-модели</p>
+        <p class="text-xs text-slate-400 mt-1">Модель: <a href="https://huggingface.co/pwrmind/user2-small-nli-onnx" target="_blank" class="text-indigo-500 hover:underline">pwrmind/user2-small-nli-onnx</a></p>
     </header>
 
-    <!-- Статус загрузки модели -->
-    <div x-show="!modelReady" class="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-center gap-3">
-        <svg class="animate-spin h-5 w-5 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-        <span x-text="loadError ? loadError : 'Загрузка модели USER2-small… Это может занять несколько секунд при первом запуске.'"></span>
+    <div x-show="!modelReady" class="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-center gap-3 shadow-sm">
+        <div class="loader" x-show="!loadError"></div>
+        <svg x-show="loadError" class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span x-text="loadError ? loadError : 'Инициализация NLI-модели (~35 МБ). Первая загрузка может занять несколько секунд.'"></span>
     </div>
 
     <div x-show="modelReady">
-        <!-- Вкладки -->
         <div class="flex gap-2 mb-6 border-b border-slate-200">
             <button @click="activeTab = 'analyze'"
                     :class="activeTab === 'analyze' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'"
@@ -46,7 +50,6 @@
             </button>
         </div>
 
-        <!-- Вкладка "Анализ" -->
         <div x-show="activeTab === 'analyze'" class="space-y-6">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <label for="thoughtInput" class="block text-sm font-medium text-slate-700 mb-2">Введите вашу мысль</label>
@@ -58,30 +61,28 @@
                     <div class="flex gap-2">
                         <button @click="userText = ''" class="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">Очистить</button>
                         <button @click="analyzeText()" :disabled="!userText.trim() || analyzing"
-                                class="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                            <span x-show="!analyzing">Анализировать</span>
-                            <span x-show="analyzing">Анализ…</span>
+                                class="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2">
+                            <svg x-show="analyzing" class="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                            <span x-text="analyzing ? 'Анализ…' : 'Анализировать'"></span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Результаты -->
             <div x-show="results.length > 0" class="space-y-3">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-slate-800">Результаты анализа</h2>
                     <div class="flex items-center gap-3 text-xs text-slate-500">
-                        <span>Порог:</span>
-                        <input type="range" x-model.number="confidenceThreshold" min="0" max="1" step="0.05" class="w-24 accent-indigo-600">
-                        <span x-text="Math.round(confidenceThreshold * 100) + '%'"></span>
+                        <span>Порог уверенности:</span>
+                        <input type="range" x-model.number="confidenceThreshold" min="0" max="0.99" step="0.05" class="w-24 accent-indigo-600">
+                        <span class="w-8 text-right font-mono" x-text="Math.round(confidenceThreshold * 100) + '%'"></span>
                     </div>
                 </div>
 
-                <!-- Сводка -->
                 <div class="grid grid-cols-3 gap-3">
                     <div class="bg-white rounded-xl border border-slate-200 p-3 text-center">
                         <div class="text-2xl font-bold text-indigo-600" x-text="filteredResults.length"></div>
-                        <div class="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Искажений</div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Найдено искажений</div>
                     </div>
                     <div class="bg-white rounded-xl border border-slate-200 p-3 text-center">
                         <div class="text-2xl font-bold text-emerald-600" x-text="filteredResults.length ? Math.round(Math.max(...filteredResults.map(r => r.score)) * 100) + '%' : '—'"></div>
@@ -89,11 +90,10 @@
                     </div>
                     <div class="bg-white rounded-xl border border-slate-200 p-3 text-center">
                         <div class="text-2xl font-bold text-amber-600" x-text="analysisTime ? analysisTime + ' мс' : '—'"></div>
-                        <div class="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Время</div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Время анализа</div>
                     </div>
                 </div>
 
-                <!-- Карточки искажений -->
                 <template x-for="item in filteredResults" :key="item.id">
                     <div class="bias-card bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
                         <div class="flex-1 min-w-0">
@@ -103,79 +103,72 @@
                             </div>
                             <p class="text-sm text-slate-500 mt-1" x-text="item.description"></p>
                         </div>
-                        <div class="w-16 h-16 rounded-full flex items-center justify-center shrink-0"
-                             :class="item.score >= 0.7 ? 'bg-rose-100 text-rose-600' : item.score >= 0.5 ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'">
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center shrink-0 border-4"
+                             :class="item.score >= 0.8 ? 'border-rose-400 bg-rose-50 text-rose-600' : item.score >= 0.6 ? 'border-amber-400 bg-amber-50 text-amber-600' : 'border-emerald-400 bg-emerald-50 text-emerald-600'">
                             <span class="text-sm font-bold" x-text="Math.round(item.score * 100)"></span>
                         </div>
                     </div>
                 </template>
 
-                <div x-show="filteredResults.length === 0" class="text-center py-8 text-slate-400 text-sm">
-                    При текущем пороге уверенности искажения не обнаружены. Попробуйте снизить порог.
+                <div x-show="filteredResults.length === 0" class="text-center py-10 text-slate-500 text-sm bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <svg class="w-12 h-12 mx-auto text-emerald-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p class="font-medium text-slate-700">Когнитивные искажения не обнаружены.</p>
+                    <p class="text-xs mt-1">Ваша мысль выглядит рациональной, либо уверенность модели ниже установленного порога.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Вкладка "История" -->
         <div x-show="activeTab === 'history'" class="space-y-4">
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-slate-800">История анализов</h2>
-                <button @click="history = []" x-show="history.length" class="text-xs text-rose-500 hover:text-rose-700 font-medium">Очистить историю</button>
+                <button @click="history = []" x-show="history.length" class="text-xs text-rose-500 hover:text-rose-700 font-medium transition-colors">Очистить историю</button>
             </div>
             <template x-for="(entry, idx) in [...history].reverse()" :key="idx">
-                <div class="bg-white rounded-xl border border-slate-200 p-4">
-                    <div class="flex items-center justify-between mb-1">
+                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-400" x-text="new Date(entry.timestamp).toLocaleString('ru-RU')"></span>
-                        <span class="text-xs font-medium text-indigo-600" x-text="entry.results.length + ' искаж.'"></span>
+                        <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded" x-text="entry.results.length + ' искаж.'"></span>
                     </div>
-                    <p class="text-sm text-slate-700 line-clamp-2" x-text="entry.text"></p>
-                    <div class="flex flex-wrap gap-1.5 mt-2">
-                        <template x-for="r in entry.results.slice(0, 5)" :key="r.id">
-                            <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" x-text="r.name"></span>
+                    <p class="text-sm text-slate-700 italic border-l-2 border-slate-300 pl-3 py-1 mb-3">«<span x-text="entry.text"></span>»</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        <template x-for="r in entry.results" :key="r.id">
+                            <span class="text-[11px] font-medium px-2 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200" x-text="r.name + ' (' + Math.round(r.score*100) + '%)'"></span>
                         </template>
                     </div>
                 </div>
             </template>
-            <div x-show="history.length === 0" class="text-center py-8 text-slate-400 text-sm">История анализов пуста</div>
+            <div x-show="history.length === 0" class="text-center py-10 text-slate-400 text-sm bg-white rounded-xl border border-slate-200">
+                История анализов пуста
+            </div>
         </div>
     </div>
 
-    <footer class="text-center text-xs text-slate-400 mt-12">
-        CognitiveBiasGauge · USER2-small · Все вычисления выполняются локально
+    <footer class="text-center text-xs text-slate-400 mt-16 pb-8">
+        <p>CognitiveBiasGauge · Custom NLI Engine</p>
+        <p class="mt-1">Все данные обрабатываются локально в браузере</p>
     </footer>
 </div>
 
 <script type="module">
     import Alpine from 'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/module.esm.js';
-    import { pipeline, cos_sim } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+    // Оставляем версию 3.7.0 для поддержки modernbert
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.0';
 
-    // Библиотека когнитивных искажений
     const BIAS_LIBRARY = [
-        { id: 'catastrophizing', name: 'Катастрофизация', description: 'Ожидание наихудшего возможного исхода, преувеличение масштаба проблемы.', passage: 'Если это случится, всё рухнет. Я не переживу. Это будет полная катастрофа. Худший сценарий обязательно произойдёт.' },
-        { id: 'dichotomous', name: 'Дихотомическое мышление', description: 'Восприятие ситуаций в крайностях: «всё или ничего», без промежуточных вариантов.', passage: 'Либо я идеален, либо полный неудачник. Если я не первый, значит последний. Всё должно быть безупречно или это провал.' },
-        { id: 'discounting_positive', name: 'Обесценивание позитивного', description: 'Игнорирование или приуменьшение значимости положительных событий и достижений.', passage: 'Это просто повезло. Любой мог бы так сделать. Мой успех ничего не значит. Это не считается.' },
-        { id: 'emotional_reasoning', name: 'Эмоциональное обоснование', description: 'Вера в то, что субъективные чувства отражают объективную реальность.', passage: 'Я чувствую себя глупо, значит я глупый. Мне страшно, значит это действительно опасно. Мои чувства говорят мне правду.' },
-        { id: 'mind_reading', name: 'Чтение мыслей', description: 'Уверенность в том, что вы знаете, о чём думают другие, без достаточных доказательств.', passage: 'Они наверняка думают, что я неудачник. Я знаю, что он меня осуждает. Все считают меня странным.' },
-        { id: 'fortune_telling', name: 'Предсказание будущего', description: 'Убеждённость в том, что будущее уже предопределено, без учёта альтернатив.', passage: 'Я точно провалю экзамен. Всё закончится плохо. Я никогда не найду работу. Будущее безнадёжно.' },
-        { id: 'labeling', name: 'Наклеивание ярлыков', description: 'Приписывание себе или другим глобальных негативных характеристик вместо описания конкретного поведения.', passage: 'Я неудачник. Он злой человек. Она эгоистка. Я полное ничтожество. Он полный идиот.' },
-        { id: 'should_statements', name: 'Долженствование', description: 'Жёсткие правила о том, как «должно» быть, порождающие чувство вины или обиды.', passage: 'Я должен всегда быть продуктивным. Люди обязаны быть вежливыми. Я не должен ошибаться. Всё должно быть идеально.' },
-        { id: 'personalization', name: 'Персонализация', description: 'Приписывание себе ответственности за события, которые не полностью под вашим контролем.', passage: 'Это моя вина, что он расстроен. Из-за меня всё пошло не так. Я причина их проблем. Если бы я был лучше, этого бы не случилось.' },
-        { id: 'mental_filter', name: 'Ментальный фильтр', description: 'Фокусировка исключительно на негативных деталях при игнорировании позитивных аспектов.', passage: 'Да, было много хорошего, но я зациклен на одной ошибке. Всё было испорчено одним недостатком. Я вижу только плохое.' },
-        { id: 'overgeneralization', name: 'Сверхобобщение', description: 'Вывод о глобальном паттерне на основе единичного случая.', passage: 'Это всегда так происходит. Я никогда не добиваюсь успеха. Все люди предают. Каждый раз одно и то же.' },
-        { id: 'magnification', name: 'Преувеличение / Минимизация', description: 'Непропорциональное раздувание значимости негативных событий или приуменьшение позитивных.', passage: 'Моя ошибка огромна и непростительна. А мои достижения ничего не стоят. Проблема катастрофична, а хорошее незначительно.' }
+        { id: 'catastrophizing', name: 'Катастрофизация', description: 'Ожидание наихудшего возможного исхода.', prompt: 'Я ожидаю наихудшего возможного исхода или катастрофы.' },
+        { id: 'dichotomous', name: 'Дихотомическое мышление', description: 'Восприятие ситуаций в крайностях: «всё или ничего».', prompt: 'Я мыслю крайностями по принципу всё или ничего.' },
+        { id: 'discounting_positive', name: 'Обесценивание позитивного', description: 'Игнорирование или приуменьшение значимости положительных событий.', prompt: 'Я обесцениваю или приуменьшаю значимость чего-то хорошего.' },
+        { id: 'emotional_reasoning', name: 'Эмоциональное обоснование', description: 'Вера в то, что субъективные чувства отражают объективную реальность.', prompt: 'Я принимаю свои чувства за объективную реальность.' },
+        { id: 'mind_reading', name: 'Чтение мыслей', description: 'Уверенность в том, что вы знаете, о чём думают другие, без доказательств.', prompt: 'Я утверждаю, что знаю мысли других людей без доказательств.' },
+        { id: 'fortune_telling', name: 'Предсказание будущего', description: 'Убеждённость в том, что будущее уже предопределено.', prompt: 'Я предсказываю будущее так, будто оно уже предопределено.' },
+        { id: 'labeling', name: 'Наклеивание ярлыков', description: 'Приписывание себе или другим глобальных негативных характеристик.', prompt: 'Я навешиваю на себя или других глобальные негативные ярлыки.' },
+        { id: 'should_statements', name: 'Долженствование', description: 'Жёсткие правила о том, как «должно» быть, порождающие вину.', prompt: 'Я устанавливаю жесткие правила о том, как всё должно быть.' },
+        { id: 'personalization', name: 'Персонализация', description: 'Приписывание себе ответственности за события вне вашего контроля.', prompt: 'Я беру на себя вину за события вне моего контроля.' },
+        { id: 'mental_filter', name: 'Ментальный фильтр', description: 'Фокусировка исключительно на негативных деталях.', prompt: 'Я концентрируюсь исключительно на негативных деталях.' },
+        { id: 'overgeneralization', name: 'Сверхобобщение', description: 'Вывод о глобальном паттерне на основе единичного случая.', prompt: 'Я делаю глобальные выводы на основе единичного случая.' },
+        { id: 'magnification', name: 'Преувеличение / Минимизация', description: 'Непропорциональное раздувание негатива или приуменьшение позитива.', prompt: 'Я непропорционально раздуваю негатив или преуменьшаю позитив.' }
     ];
 
-    // Извлекает плоский Float32Array из результата пайплайна.
-    // В Transformers.js v3 результат — это Tensor, и cos_sim требует массив, а не Tensor.
-    function toVector(output) {
-        if (!output) return null;
-        if (output.data && typeof output.data.length === 'number') return output.data;
-        if (ArrayBuffer.isView(output)) return output;
-        if (Array.isArray(output)) return output;
-        return null;
-    }
-
-    // Регистрация компонента до Alpine.start()
     Alpine.data('cognitiveBiasApp', () => ({
         modelReady: false,
         loadError: '',
@@ -185,12 +178,10 @@
         results: [],
         filteredResults: [],
         history: [],
-        confidenceThreshold: 0.45,
+        confidenceThreshold: 0.50,
         analysisTime: 0,
-        _extractor: null,
-        _biasEmbeddings: [],
+        _classifier: null,
 
-        // Alpine вызывает init() автоматически; x-init не нужен
         init() {
             this.$watch('confidenceThreshold', () => this.applyThreshold());
             this.loadModel();
@@ -198,48 +189,44 @@
 
         async loadModel() {
             try {
-                this._extractor = await pipeline(
-                    'feature-extraction',
-                    'onnx-community/USER2-small-ONNX',
-                    { dtype: 'q8' }
+                // Загружаем вашу кастомную NLI-модель
+                this._classifier = await pipeline(
+                    'zero-shot-classification',
+                    'pwrmind/user2-small-nli-onnx',
+                    { 
+                        dtype: 'fp32',          // Отключает поиск файла с суффиксом _quantized
+                        model_file_name: 'model' // Указывает на конкретное имя файла onnx/model.onnx
+                    }
                 );
-
-                for (const bias of BIAS_LIBRARY) {
-                    const output = await this._extractor(bias.passage, {
-                        pooling: 'mean',
-                        normalize: true
-                    });
-                    const vec = toVector(output);
-                    if (!vec) throw new Error('Не удалось извлечь эмбеддинг для ' + bias.id);
-                    this._biasEmbeddings.push({ ...bias, embedding: vec });
-                }
-
                 this.modelReady = true;
             } catch (err) {
                 console.error('Ошибка загрузки модели:', err);
-                this.loadError = 'Не удалось загрузить модель: ' + (err?.message || err);
+                this.loadError = 'Не удалось загрузить модель. Проверьте интернет-соединение и конфигурацию репозитория.';
             }
         },
 
         async analyzeText() {
-            if (!this.userText.trim() || !this._extractor) return;
+            if (!this.userText.trim() || !this._classifier) return;
             this.analyzing = true;
             const start = performance.now();
 
             try {
-                const output = await this._extractor(this.userText, {
-                    pooling: 'mean',
-                    normalize: true
-                });
-                const userVec = toVector(output);
-                if (!userVec) throw new Error('Не удалось извлечь эмбеддинг пользовательского текста');
+                const labels = BIAS_LIBRARY.map(b => b.prompt);
 
-                const scored = this._biasEmbeddings.map(bias => ({
-                    id: bias.id,
-                    name: bias.name,
-                    description: bias.description,
-                    score: cos_sim(userVec, bias.embedding)
-                }));
+                const output = await this._classifier(this.userText, labels, {
+                    hypothesis_template: '{}',
+                    multi_label: true 
+                });
+
+                const scored = output.labels.map((labelPrompt, index) => {
+                    const biasInfo = BIAS_LIBRARY.find(b => b.prompt === labelPrompt);
+                    return {
+                        id: biasInfo.id,
+                        name: biasInfo.name,
+                        description: biasInfo.description,
+                        score: output.scores[index]
+                    };
+                });
 
                 scored.sort((a, b) => b.score - a.score);
 
@@ -247,13 +234,13 @@
                 this.analysisTime = Math.round(performance.now() - start);
                 this.applyThreshold();
 
-                this.history.push({
-                    text: this.userText,
-                    results: this.filteredResults.length
-                        ? [...this.filteredResults]
-                        : scored.slice(0, 3),
-                    timestamp: Date.now()
-                });
+                if (this.filteredResults.length > 0) {
+                    this.history.push({
+                        text: this.userText,
+                        results: [...this.filteredResults],
+                        timestamp: Date.now()
+                    });
+                }
             } catch (err) {
                 console.error('Ошибка анализа:', err);
             } finally {
