@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CognitiveBiasGauge · USER2-small</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
         .bias-card { transition: all 0.2s ease; }
@@ -14,7 +13,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased">
 
-<div x-data="cognitiveBiasApp()" x-init="init()" x-cloak class="max-w-5xl mx-auto px-4 py-8">
+<div x-data="cognitiveBiasApp" x-cloak class="max-w-5xl mx-auto px-4 py-8">
 
     <!-- Заголовок -->
     <header class="text-center mb-10">
@@ -29,7 +28,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
         </svg>
-        <span>Загрузка модели USER2-small… Это может занять несколько секунд при первом запуске.</span>
+        <span x-text="loadError ? loadError : 'Загрузка модели USER2-small… Это может занять несколько секунд при первом запуске.'"></span>
     </div>
 
     <div x-show="modelReady">
@@ -123,7 +122,7 @@
                 <h2 class="text-lg font-semibold text-slate-800">История анализов</h2>
                 <button @click="history = []" x-show="history.length" class="text-xs text-rose-500 hover:text-rose-700 font-medium">Очистить историю</button>
             </div>
-            <template x-for="(entry, idx) in history.slice().reverse()" :key="idx">
+            <template x-for="(entry, idx) in [...history].reverse()" :key="idx">
                 <div class="bg-white rounded-xl border border-slate-200 p-4">
                     <div class="flex items-center justify-between mb-1">
                         <span class="text-xs text-slate-400" x-text="new Date(entry.timestamp).toLocaleString('ru-RU')"></span>
@@ -147,9 +146,10 @@
 </div>
 
 <script type="module">
+    import Alpine from 'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/module.esm.js';
     import { pipeline, cos_sim } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
 
-    // Библиотека когнитивных искажений (эталонные описания для сравнения)
+    // Библиотека когнитивных искажений
     const BIAS_LIBRARY = [
         { id: 'catastrophizing', name: 'Катастрофизация', description: 'Ожидание наихудшего возможного исхода, преувеличение масштаба проблемы.', passage: 'Если это случится, всё рухнет. Я не переживу. Это будет полная катастрофа. Худший сценарий обязательно произойдёт.' },
         { id: 'dichotomous', name: 'Дихотомическое мышление', description: 'Восприятие ситуаций в крайностях: «всё или ничего», без промежуточных вариантов.', passage: 'Либо я идеален, либо полный неудачник. Если я не первый, значит последний. Всё должно быть безупречно или это провал.' },
@@ -165,103 +165,109 @@
         { id: 'magnification', name: 'Преувеличение / Минимизация', description: 'Непропорциональное раздувание значимости негативных событий или приуменьшение позитивных.', passage: 'Моя ошибка огромна и непростительна. А мои достижения ничего не стоят. Проблема катастрофична, а хорошее незначительно.' }
     ];
 
-    window.cognitiveBiasApp = function () {
-        return {
-            // Состояние
-            modelReady: false,
-            analyzing: false,
-            activeTab: 'analyze',
-            userText: '',
-            results: [],
-            filteredResults: [],
-            history: [],
-            confidenceThreshold: 0.45,
-            analysisTime: 0,
-            _extractor: null,
-            _biasEmbeddings: [],
+    // Извлекает плоский Float32Array из результата пайплайна.
+    // В Transformers.js v3 результат — это Tensor, и cos_sim требует массив, а не Tensor.
+    function toVector(output) {
+        if (!output) return null;
+        if (output.data && typeof output.data.length === 'number') return output.data;
+        if (ArrayBuffer.isView(output)) return output;
+        if (Array.isArray(output)) return output;
+        return null;
+    }
 
-            // Инициализация
-            async init() {
-                try {
-                    // Загружаем пайплайн sentence-similarity с USER2-small (ONNX)
-                    this._extractor = await pipeline(
-                        'sentence-similarity',
-                        'onnx-community/USER2-small-ONNX',
-                        { dtype: 'q8' } // квантованная версия для экономии памяти
-                    );
+    // Регистрация компонента до Alpine.start()
+    Alpine.data('cognitiveBiasApp', () => ({
+        modelReady: false,
+        loadError: '',
+        analyzing: false,
+        activeTab: 'analyze',
+        userText: '',
+        results: [],
+        filteredResults: [],
+        history: [],
+        confidenceThreshold: 0.45,
+        analysisTime: 0,
+        _extractor: null,
+        _biasEmbeddings: [],
 
-                    // Вычисляем эмбеддинги для всех эталонных текстов
-                    for (const bias of BIAS_LIBRARY) {
-                        const embedding = await this._extractor(bias.passage, {
-                            pooling: 'mean',
-                            normalize: true
-                        });
-                        this._biasEmbeddings.push({ ...bias, embedding });
-                    }
+        // Alpine вызывает init() автоматически; x-init не нужен
+        init() {
+            this.$watch('confidenceThreshold', () => this.applyThreshold());
+            this.loadModel();
+        },
 
-                    this.modelReady = true;
-                } catch (err) {
-                    console.error('Ошибка загрузки модели:', err);
-                    alert('Не удалось загрузить модель USER2-small. Проверьте консоль.');
-                }
-            },
+        async loadModel() {
+            try {
+                this._extractor = await pipeline(
+                    'feature-extraction',
+                    'onnx-community/USER2-small-ONNX',
+                    { dtype: 'q8' }
+                );
 
-            // Основной анализ
-            async analyzeText() {
-                if (!this.userText.trim() || !this._extractor) return;
-                this.analyzing = true;
-                const start = performance.now();
-
-                try {
-                    // Эмбеддинг пользовательского текста
-                    const userEmbedding = await this._extractor(this.userText, {
+                for (const bias of BIAS_LIBRARY) {
+                    const output = await this._extractor(bias.passage, {
                         pooling: 'mean',
                         normalize: true
                     });
-
-                    // Считаем косинусное сходство с каждым эталоном
-                    const scored = this._biasEmbeddings.map(bias => {
-                        const score = cos_sim(userEmbedding, bias.embedding);
-                        return { id: bias.id, name: bias.name, description: bias.description, score };
-                    });
-
-                    // Сортируем по убыванию
-                    scored.sort((a, b) => b.score - a.score);
-
-                    this.results = scored;
-                    this.analysisTime = Math.round(performance.now() - start);
-                    this.applyThreshold();
-
-                    // Сохраняем в историю
-                    this.history.push({
-                        text: this.userText,
-                        results: this.filteredResults.length ? this.filteredResults : scored.slice(0, 3),
-                        timestamp: Date.now()
-                    });
-
-                } catch (err) {
-                    console.error('Ошибка анализа:', err);
-                } finally {
-                    this.analyzing = false;
+                    const vec = toVector(output);
+                    if (!vec) throw new Error('Не удалось извлечь эмбеддинг для ' + bias.id);
+                    this._biasEmbeddings.push({ ...bias, embedding: vec });
                 }
-            },
 
-            // Фильтрация по порогу
-            applyThreshold() {
-                this.filteredResults = this.results.filter(r => r.score >= this.confidenceThreshold);
+                this.modelReady = true;
+            } catch (err) {
+                console.error('Ошибка загрузки модели:', err);
+                this.loadError = 'Не удалось загрузить модель: ' + (err?.message || err);
             }
-        };
-    };
-</script>
+        },
 
-<script>
-    // Alpine.js: следим за изменением порога
-    document.addEventListener('alpine:init', () => {
-        Alpine.effect(() => {
-            const app = Alpine.$data(document.querySelector('[x-data]'));
-            if (app && app.results) app.applyThreshold();
-        });
-    });
+        async analyzeText() {
+            if (!this.userText.trim() || !this._extractor) return;
+            this.analyzing = true;
+            const start = performance.now();
+
+            try {
+                const output = await this._extractor(this.userText, {
+                    pooling: 'mean',
+                    normalize: true
+                });
+                const userVec = toVector(output);
+                if (!userVec) throw new Error('Не удалось извлечь эмбеддинг пользовательского текста');
+
+                const scored = this._biasEmbeddings.map(bias => ({
+                    id: bias.id,
+                    name: bias.name,
+                    description: bias.description,
+                    score: cos_sim(userVec, bias.embedding)
+                }));
+
+                scored.sort((a, b) => b.score - a.score);
+
+                this.results = scored;
+                this.analysisTime = Math.round(performance.now() - start);
+                this.applyThreshold();
+
+                this.history.push({
+                    text: this.userText,
+                    results: this.filteredResults.length
+                        ? [...this.filteredResults]
+                        : scored.slice(0, 3),
+                    timestamp: Date.now()
+                });
+            } catch (err) {
+                console.error('Ошибка анализа:', err);
+            } finally {
+                this.analyzing = false;
+            }
+        },
+
+        applyThreshold() {
+            this.filteredResults = this.results.filter(r => r.score >= this.confidenceThreshold);
+        }
+    }));
+
+    window.Alpine = Alpine;
+    Alpine.start();
 </script>
 
 </body>
