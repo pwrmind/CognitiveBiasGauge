@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CognitiveBiasGauge · Custom NLI</title>
+    <title>CognitiveBiasGauge · Custom NLI (FP32)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         [x-cloak] { display: none !important; }
@@ -26,14 +26,14 @@
 
     <header class="text-center mb-10">
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">CognitiveBiasGauge</h1>
-        <p class="text-slate-500 mt-2">Анализатор когнитивных искажений на базе кастомной NLI-модели</p>
+        <p class="text-slate-500 mt-2">Анализатор когнитивных искажений на базе кастомной NLI-модели (FP32)</p>
         <p class="text-xs text-slate-400 mt-1">Модель: <a href="https://huggingface.co/pwrmind/user2-small-nli-onnx" target="_blank" class="text-indigo-500 hover:underline">pwrmind/user2-small-nli-onnx</a></p>
     </header>
 
     <div x-show="!modelReady" class="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-center gap-3 shadow-sm">
         <div class="loader" x-show="!loadError"></div>
         <svg x-show="loadError" class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        <span x-text="loadError ? loadError : 'Инициализация NLI-модели (~35 МБ). Первая загрузка может занять несколько секунд.'"></span>
+        <span x-text="loadError ? loadError : 'Инициализация NLI-модели (~135 МБ). Первая загрузка может занять несколько секунд.'"></span>
     </div>
 
     <div x-show="modelReady">
@@ -54,7 +54,7 @@
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <label for="thoughtInput" class="block text-sm font-medium text-slate-700 mb-2">Введите вашу мысль</label>
                 <textarea id="thoughtInput" x-model="userText" rows="4"
-                          placeholder="Например: Если я не сдам этот экзамен, моя жизнь рухнет…"
+                          placeholder="Например: Он думает, что я ничего не знаю про этот проект…"
                           class="w-full rounded-xl border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-none"></textarea>
                 <div class="flex items-center justify-between mt-3">
                     <span class="text-xs text-slate-400"><span x-text="userText.length"></span> символов</span>
@@ -144,7 +144,7 @@
     </div>
 
     <footer class="text-center text-xs text-slate-400 mt-16 pb-8">
-        <p>CognitiveBiasGauge · Custom NLI Engine</p>
+        <p>CognitiveBiasGauge · Custom NLI Engine (FP32)</p>
         <p class="mt-1">Все данные обрабатываются локально в браузере</p>
     </footer>
 </div>
@@ -153,7 +153,6 @@
     import Alpine from 'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/module.esm.js';
     import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.0';
 
-    // Обновленная библиотека строго по учебнику
     const BIAS_LIBRARY = [
         { id: 'all_or_nothing', name: 'Стиль мышления «всё или ничего»', description: 'Восприятие ситуаций в крайностях: «всё или ничего».', prompt: 'Либо я успешен во всем, либо я полный неудачник.' },
         { id: 'catastrophizing', name: 'Катастрофизация', description: 'Ожидание наихудшего возможного исхода.', prompt: 'Я так расстроен, что вообще ничего не смогу делать. Это настоящая катастрофа.' },
@@ -178,7 +177,7 @@
         results: [],
         filteredResults: [],
         history: [],
-        confidenceThreshold: 0.50,
+        confidenceThreshold: 0.60,
         analysisTime: 0,
         _classifier: null,
 
@@ -189,6 +188,7 @@
 
         async loadModel() {
             try {
+                // Загружаем нашу модель в полной точности (fp32)
                 this._classifier = await pipeline(
                     'zero-shot-classification',
                     'pwrmind/user2-small-nli-onnx',
